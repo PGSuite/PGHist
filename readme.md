@@ -27,5 +27,5 @@ Tool keeps history of table changes and allows to get table as of date-time in t
 
 ### [Documentation](http://pghist.org/en/documentation/) ### 
 ### [Example](http://pghist.org/en/#example) ### 
-
+### [Download](http://pghist.org/en/download/) ###
 
