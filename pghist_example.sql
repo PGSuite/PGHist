@@ -58,7 +58,7 @@ begin
 end; 
 $$;
 
-select * from test.document_at_timestamp(now()-interval '5 second');
+select * from test.document_at_timestamp(now()-interval '15 second');
 select * from test.document_changes();
 
 -- Changes in two related tables to display in interface

@@ -406,7 +406,7 @@ begin
   call pghist.hist_execute_sql(schema, table_name, 'drop table if exists '||v_hist_schema||'.'||v_hist_table_name||' cascade');  
 end; $$;
 
-create or replace function pghist.event_fn_ddl_command() returns event_trigger as $$
+create or replace function pghist.event_fn_ddl_command() returns event_trigger security definer as $$
 declare
   rec record;
 begin
@@ -432,7 +432,7 @@ begin
 end;
 $$ language plpgsql;
 
-create or replace function pghist.event_fn_drop_table() returns event_trigger as $$
+create or replace function pghist.event_fn_drop_table() returns event_trigger security definer as $$
 declare
   rec record;
 begin  	
@@ -451,6 +451,6 @@ do $$ begin
     create event trigger pghist_event_tg_ddl_command on ddl_command_end when tag in ('ALTER TABLE','CREATE INDEX','COMMENT') execute procedure pghist.event_fn_ddl_command();
   end if;
   if not exists (select 1 from pg_event_trigger where evtname='pghist_event_tg_drop_table') then
-    create event trigger pghist_event_tg_drop_table on sql_drop when tag in ('DROP TABLE') execute function pghist.event_fn_drop_table();
+    create event trigger pghist_event_tg_drop_table on sql_drop when tag in ('DROP TABLE','DROP SCHEMA') execute function pghist.event_fn_drop_table();
   end if; 
 end $$;
