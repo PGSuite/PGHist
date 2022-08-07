@@ -1,5 +1,9 @@
 ## PGHist | Changes history and tables audit in PostgreSQL
-  
+
+### [Download](http://pghist.org/en/download/) ###
+### [Documentation](http://pghist.org/en/documentation/) ### 
+### [Example](http://pghist.org/en/#example) ### 
+
 ### Description ###
 
 Tool keeps history of table changes and allows to get table as of date-time in the past, list of changes by fields indicating user, time of the change, transaction and other technical information.  
@@ -24,8 +28,3 @@ Tool keeps history of table changes and allows to get table as of date-time in t
 *   **Indexes** - for a table storing history, indexes are automatically built similarly to the main table. SQL queries to the history table are executed using an index, for example, by the ID field
 *   **Condition (optional)** - when getting a list of changes, you can specify a condition with or without parameter
 *   **Autocorrection** - when performing DDL operations on a table (alter table, create index, etc.), a trigger fires, that corrects the history keeping. When a table is deleted, its history is also deleted, when history is enabled current table values transferred to history
-
-### [Documentation](http://pghist.org/en/documentation/) ### 
-### [Example](http://pghist.org/en/#example) ### 
-### [Download](http://pghist.org/en/download/) ###
-

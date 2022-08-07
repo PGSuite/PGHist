@@ -2,7 +2,7 @@ create schema if not exists pghist;
 
 create or replace function pghist.pghist_version() returns varchar language plpgsql as $$
 begin
-  return '22.3.5'; -- 2022.07.01 13:35:40
+  return '22.3.9'; -- 2022.07.29 13:59:06
 end; $$;
 
 create table if not exists pghist.hist_transaction(
@@ -33,20 +33,20 @@ create table if not exists pghist.hist_sql_log(
 do $$ begin
   if to_regtype('pghist.table_change') is null then
     create type pghist.table_change as (
-      schema name,
-      table_name name,
-      table_comment text,      
-      row_pkey varchar[],
-      row_comment varchar,
       column_name name,
-      column_comment varchar,      
-      column_pos int,      
       value_old text,
       value_new text,
-      operation varchar,
       db_user varchar,
       app_user varchar,
       transaction_timestamp timestamptz,
+      row_comment varchar,
+      operation varchar,      
+      schema name,
+      table_name name,
+      table_comment text,     
+      column_comment varchar,      
+      column_pos int,
+      row_pkey varchar[],     
       transaction_id bigint,
       hist_id bigint
     );  
@@ -104,8 +104,10 @@ begin
 end; $$;
 
 create or replace procedure pghist.hist_enable(schema name, table_name name) language plpgsql as $body$
-declare
-  v_table_oid oid := (schema||'.'||table_name)::regclass::oid;
+declare 
+  v_schema name := lower(schema);
+  v_table_name name := lower(table_name);
+  v_table_oid oid := (v_schema||'.'||v_table_name)::regclass::oid;
   v_table_owner name;
   v_table_columns name[];
   v_table_columns_pos int[];
@@ -141,7 +143,7 @@ declare
   rec record;
 begin
   select relowner::regrole::name into v_table_owner from pg_class where oid=v_table_oid;
-  call pghist.hist_object_names(schema, table_name, v_hist_schema, v_hist_table_name, v_trigger_iud_function_name, v_trigger_iud_name, v_trigger_truncate_function_name, v_trigger_truncate_name, v_table_at_timestamp_name, v_table_changes_name);  
+  call pghist.hist_object_names(v_schema, v_table_name, v_hist_schema, v_hist_table_name, v_trigger_iud_function_name, v_trigger_iud_name, v_trigger_truncate_function_name, v_trigger_truncate_name, v_table_at_timestamp_name, v_table_changes_name);  
   select array_agg(attname),
          array_agg(column_pos),         
          array_agg(quote_nullable(column_comment)),
@@ -199,13 +201,13 @@ begin
     v_sql := v_sql||'  hist_pkey varchar[],'||v_newline;  
     v_sql := v_sql||'  '||v_table_columns_ddl||v_newline;
     v_sql := v_sql||')';
-    call pghist.hist_execute_sql(schema, table_name, v_sql);
-    call pghist.hist_execute_sql(schema, table_name, 'create index on '||v_hist_schema||'.'||v_hist_table_name||'(hist_transaction_id)');
-    call pghist.hist_execute_sql(schema, table_name, 'lock table '||v_hist_schema||'.'||v_hist_table_name||' in exclusive mode');
+    call pghist.hist_execute_sql(v_schema, v_table_name, v_sql);
+    call pghist.hist_execute_sql(v_schema, v_table_name, 'create index on '||v_hist_schema||'.'||v_hist_table_name||'(hist_transaction_id)');
+    call pghist.hist_execute_sql(v_schema, v_table_name, 'lock table '||v_hist_schema||'.'||v_hist_table_name||' in exclusive mode');
     v_sql := 'insert into '||v_hist_schema||'.'||v_hist_table_name||' ('||v_hist_table_fix_columns||array_to_string(v_table_columns,',')||')'; 
-    v_sql := v_sql||'  select nextval(''pghist.hist_id_seq''),'||pghist.hist_transaction_id()||',''HIST_CREATE'',''NEW'','||v_table_value_pkey||','||array_to_string(v_table_columns,',')||' from only '||schema||'.'||table_name;
-    call pghist.hist_execute_sql(schema, table_name, v_sql);   
-    call pghist.hist_execute_sql(schema, table_name, 'grant select on '||v_hist_schema||'.hist_transaction,'||v_hist_schema||'.'||v_hist_table_name||' to '||v_table_owner);
+    v_sql := v_sql||'  select nextval(''pghist.hist_id_seq''),'||pghist.hist_transaction_id()||',''HIST_CREATE'',''NEW'','||v_table_value_pkey||','||array_to_string(v_table_columns,',')||' from only '||v_schema||'.'||v_table_name;
+    call pghist.hist_execute_sql(v_schema, v_table_name, v_sql);   
+    call pghist.hist_execute_sql(v_schema, v_table_name, 'grant select on '||v_hist_schema||'.hist_transaction,'||v_hist_schema||'.'||v_hist_table_name||' to '||v_table_owner);
     v_hist_table_oid := (v_hist_schema||'.'||v_hist_table_name)::regclass::oid;
   else
     for rec in
@@ -214,7 +216,7 @@ begin
 	    where attrelid=v_hist_table_oid and attnum>v_hist_table_fix_column_count and not attisdropped
           and (attname,atttypid) not in (select attname,atttypid from pg_attribute where attrelid=v_table_oid and attnum>0 and not attisdropped)
     loop
-      call pghist.hist_execute_sql(schema, table_name, rec.sql_drop_column);
+      call pghist.hist_execute_sql(v_schema, v_table_name, rec.sql_drop_column);
     end loop;
     for rec in   
       select 'alter table '||v_hist_schema||'.'||v_hist_table_name||' add column '||attname||' '||typname sql_add_column
@@ -224,7 +226,7 @@ begin
           and attname not in (select attname from pg_attribute where attrelid=v_hist_table_oid and attnum>0 and not attisdropped)                   
         order by attnum          
     loop
-      call pghist.hist_execute_sql(schema, table_name, rec.sql_add_column);
+      call pghist.hist_execute_sql(v_schema, v_table_name, rec.sql_add_column);
     end loop;
   end if;
   for rec in
@@ -252,7 +254,7 @@ begin
                  select array_agg(attname order by array_position(i.indkey, a.attnum)) from pg_attribute a  where a.attrelid=i.indrelid and a.attnum = any(i.indkey)
               ) from pg_index i where indrelid = v_hist_table_oid)
   loop
-    call pghist.hist_execute_sql(schema, table_name, rec.sql_create_index);
+    call pghist.hist_execute_sql(v_schema, v_table_name, rec.sql_create_index);
   end loop;
   --       
   v_sql := 'create or replace function '||v_trigger_iud_function_name||'() returns trigger language plpgsql security definer as $$'||v_newline;
@@ -271,9 +273,9 @@ begin
   v_sql := v_sql||'    return null;'||v_newline;
   v_sql := v_sql||'end;'||v_newline;
   v_sql := v_sql||'$$';
-  call pghist.hist_execute_sql(schema, table_name, v_sql); 
+  call pghist.hist_execute_sql(v_schema, v_table_name, v_sql); 
   if not exists (select 1 from pg_trigger where tgrelid=v_table_oid and tgname=v_trigger_iud_name) then
-    call pghist.hist_execute_sql(schema, table_name, 'create trigger '||v_trigger_iud_name||' after insert or update or delete on '||schema||'.'||table_name||' for each row execute procedure '||v_trigger_iud_function_name||'();');
+    call pghist.hist_execute_sql(v_schema, v_table_name, 'create trigger '||v_trigger_iud_name||' after insert or update or delete on '||schema||'.'||table_name||' for each row execute procedure '||v_trigger_iud_function_name||'();');
   end if;
   v_sql := 'create or replace function '||v_trigger_truncate_function_name||'() returns trigger language plpgsql security definer as $$'||v_newline;
   v_sql := v_sql||'declare '||v_newline;
@@ -281,19 +283,19 @@ begin
   v_sql := v_sql||'begin '||v_newline;
   v_sql := v_sql||'  v_transaction_id := pghist.hist_transaction_id();'||v_newline;
   v_sql := v_sql||'  insert into '||v_hist_schema||'.'||v_hist_table_name||' ('||v_hist_table_fix_columns||array_to_string(v_table_columns,',')||')'||v_newline; 
-  v_sql := v_sql||'    select nextval(''pghist.hist_id_seq''),v_transaction_id,''TRUNCATE'',''OLD'','||v_table_value_pkey||','||array_to_string(v_table_columns,',')||' from only '||schema||'.'||table_name||';'||v_newline;
+  v_sql := v_sql||'    select nextval(''pghist.hist_id_seq''),v_transaction_id,''TRUNCATE'',''OLD'','||v_table_value_pkey||','||array_to_string(v_table_columns,',')||' from only '||v_schema||'.'||v_table_name||';'||v_newline;
   v_sql := v_sql||'  return null;'||v_newline;
   v_sql := v_sql||'end;'||v_newline;
   v_sql := v_sql||'$$';
-  call pghist.hist_execute_sql(schema, table_name, v_sql);
+  call pghist.hist_execute_sql(v_schema, v_table_name, v_sql);
   if not exists (select 1 from pg_trigger where tgrelid=v_table_oid and tgname=v_trigger_truncate_name) then
-    call pghist.hist_execute_sql(schema, table_name, 'create trigger '||v_trigger_truncate_name||' before truncate on '||schema||'.'||table_name||' execute procedure '||v_trigger_truncate_function_name||'();');
+    call pghist.hist_execute_sql(v_schema, v_table_name, 'create trigger '||v_trigger_truncate_name||' before truncate on '||schema||'.'||table_name||' execute procedure '||v_trigger_truncate_function_name||'();');
   end if;
   --
   if v_table_has_pkey then  
-    v_sql := 'create or replace function '||v_table_at_timestamp_name||'(transaction_start timestamptz, cascade boolean default true) returns setof '||schema||'.'||table_name||' language plpgsql security definer as $$'||v_newline;
+    v_sql := 'create or replace function '||v_table_at_timestamp_name||'(transaction_start timestamptz, cascade boolean default true) returns setof '||v_schema||'.'||v_table_name||' language plpgsql security definer as $$'||v_newline;
     v_sql := v_sql||'declare'||v_newline;
-    v_sql := v_sql||'  rec '||schema||'.'||table_name||'%rowtype;'||v_newline;
+    v_sql := v_sql||'  rec '||v_schema||'.'||v_table_name||'%rowtype;'||v_newline;
     v_sql := v_sql||'begin'||v_newline;
     v_sql := v_sql||'  for rec in '||v_newline;
     v_sql := v_sql||'    select '||array_to_string(v_table_columns,',')||' from ('||v_newline;
@@ -316,10 +318,10 @@ begin
     v_sql := v_sql||'  return;'||v_newline;   
     v_sql := v_sql||'end;'||v_newline;   
     v_sql := v_sql||'$$';  
-    call pghist.hist_execute_sql(schema, table_name, v_sql);
-    call pghist.hist_execute_sql(schema, table_name, 'alter function '||v_table_at_timestamp_name||' owner to '||v_table_owner);   
+    call pghist.hist_execute_sql(v_schema, v_table_name, v_sql);
+    call pghist.hist_execute_sql(v_schema, v_table_name, 'alter function '||v_table_at_timestamp_name||' owner to '||v_table_owner);   
   else
-    call pghist.hist_execute_sql(schema, table_name, 'drop function if exists '||v_table_at_timestamp_name||'(timestamptz, boolean)');
+    call pghist.hist_execute_sql(v_schema, v_table_name, 'drop function if exists '||v_table_at_timestamp_name||'(timestamptz, boolean)');
   end if;
   --
   v_sql := 'create or replace function '||v_table_changes_name||'(where_clause text default null, where_param anyelement default null::varchar, row_comment_clause text default null, cascade boolean default true) returns setof pghist.table_change language plpgsql security definer as $$'||v_newline;
@@ -337,18 +339,18 @@ begin
   v_sql := v_sql||'  v_query := v_query||coalesce(''  where hist_id in (select hist_id from '||v_hist_schema||'.'||v_hist_table_name||' where ''||where_clause||'')'','''');'||v_newline;
   v_sql := v_sql||'  v_query := v_query||''  order by hist_id'';'||v_newline; 
   v_sql := v_sql||'  open cur_hist for execute v_query using where_param;'||v_newline;
-  v_sql := v_sql||'  rec_change.schema := '''||schema||''';'||v_newline;
-  v_sql := v_sql||'  rec_change.table_name := '''||table_name||''';'||v_newline;
+  v_sql := v_sql||'  rec_change.schema := '''||v_schema||''';'||v_newline;
+  v_sql := v_sql||'  rec_change.table_name := '''||v_table_name||''';'||v_newline;
   v_sql := v_sql||'  rec_change.table_comment := '||quote_nullable(obj_description(v_table_oid))||';'||v_newline; 
   v_sql := v_sql||'  loop'||v_newline;
   v_sql := v_sql||'    fetch cur_hist into rec_hist;'||v_newline;
-  v_sql := v_sql||'    exit when not found;'||v_newline;
-  v_sql := v_sql||'    rec_change.row_pkey := rec_hist.hist_pkey;'||v_newline;
-  v_sql := v_sql||'    rec_change.row_comment := rec_hist.hist_row_comment;'||v_newline;
-  v_sql := v_sql||'    rec_change.operation := rec_hist.hist_operation;'||v_newline;
+  v_sql := v_sql||'    exit when not found;'||v_newline; 
   v_sql := v_sql||'    rec_change.db_user := rec_hist.hist_db_user;'||v_newline; 
   v_sql := v_sql||'    rec_change.app_user := rec_hist.hist_app_user;'||v_newline;
-  v_sql := v_sql||'    rec_change.transaction_timestamp := rec_hist.hist_transaction_timestamp;'||v_newline; 
+  v_sql := v_sql||'    rec_change.transaction_timestamp := rec_hist.hist_transaction_timestamp;'||v_newline;
+  v_sql := v_sql||'    rec_change.row_comment := rec_hist.hist_row_comment;'||v_newline; 
+  v_sql := v_sql||'    rec_change.operation := rec_hist.hist_operation;'||v_newline;
+  v_sql := v_sql||'    rec_change.row_pkey := rec_hist.hist_pkey;'||v_newline;
   v_sql := v_sql||'    rec_change.transaction_id  := rec_hist.hist_transaction_id ;'||v_newline; 
   v_sql := v_sql||'    rec_change.hist_id  := rec_hist.hist_id ;'||v_newline;
   v_sql := v_sql||'    if rec_hist.hist_operation = ''INSERT'' then'||v_newline;
@@ -383,12 +385,19 @@ begin
   end if; 
   v_sql := v_sql||'end;'||v_newline;
   v_sql := v_sql||'$$';
-  call pghist.hist_execute_sql(schema, table_name, v_sql);
-  call pghist.hist_execute_sql(schema, table_name, 'alter function '||v_table_changes_name||' owner to '||v_table_owner);
+  call pghist.hist_execute_sql(v_schema, v_table_name, v_sql);
+  call pghist.hist_execute_sql(v_schema, v_table_name, 'alter function '||v_table_changes_name||' owner to '||v_table_owner);
 end; $body$;
+
+create or replace procedure pghist.hist_enable(table_name name) language plpgsql as $$
+begin
+  call pghist.hist_enable(current_schema(), table_name);
+end; $$;
 
 create or replace procedure pghist.hist_disable(schema name, table_name name) language plpgsql as $$
 declare
+  v_schema name := lower(schema);
+  v_table_name name := lower(table_name);
   v_hist_schema name;  
   v_hist_table_name name;
   v_trigger_iud_function_name name;
@@ -398,13 +407,19 @@ declare
   v_table_at_timestamp_name name;
   v_table_changes_name name;
 begin
-  call pghist.hist_object_names(schema, table_name, v_hist_schema, v_hist_table_name, v_trigger_iud_function_name, v_trigger_iud_name, v_trigger_truncate_function_name, v_trigger_truncate_name, v_table_at_timestamp_name, v_table_changes_name);
-  call pghist.hist_execute_sql(schema, table_name, 'drop function if exists '||v_table_at_timestamp_name||'(timestamptz, boolean)');
-  call pghist.hist_execute_sql(schema, table_name, 'drop function if exists '||v_table_changes_name||'(boolean, text, text, anyelement, anyelement, anyelement)');
-  call pghist.hist_execute_sql(schema, table_name, 'drop function if exists '||v_trigger_iud_function_name||' cascade');
-  call pghist.hist_execute_sql(schema, table_name, 'drop function if exists '||v_trigger_truncate_function_name||' cascade');
-  call pghist.hist_execute_sql(schema, table_name, 'drop table if exists '||v_hist_schema||'.'||v_hist_table_name||' cascade');  
+  call pghist.hist_object_names(v_schema, v_table_name, v_hist_schema, v_hist_table_name, v_trigger_iud_function_name, v_trigger_iud_name, v_trigger_truncate_function_name, v_trigger_truncate_name, v_table_at_timestamp_name, v_table_changes_name);
+  call pghist.hist_execute_sql(v_schema, v_table_name, 'drop function if exists '||v_table_at_timestamp_name||'(timestamptz, boolean)');
+  call pghist.hist_execute_sql(v_schema, v_table_name, 'drop function if exists '||v_table_changes_name||'(boolean, text, text, anyelement, anyelement, anyelement)');
+  call pghist.hist_execute_sql(v_schema, v_table_name, 'drop function if exists '||v_trigger_iud_function_name||' cascade');
+  call pghist.hist_execute_sql(v_schema, v_table_name, 'drop function if exists '||v_trigger_truncate_function_name||' cascade');
+  call pghist.hist_execute_sql(v_schema, v_table_name, 'drop table if exists '||v_hist_schema||'.'||v_hist_table_name||' cascade');  
 end; $$;
+
+create or replace procedure pghist.hist_disable(table_name name) language plpgsql as $$
+begin
+  call pghist.hist_disable(current_schema(), table_name);
+end; $$;
+
 
 create or replace function pghist.event_fn_ddl_command() returns event_trigger security definer as $$
 declare
