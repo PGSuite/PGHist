@@ -2,7 +2,7 @@ create schema if not exists pghist;
 
 create or replace function pghist.pghist_version() returns varchar language plpgsql as $$
 begin
-  return '22.3.9'; -- 2022.07.29 13:59:06
+  return '22.4.2'; -- 2022.10.03 16:28:57
 end; $$;
 
 create table if not exists pghist.hist_transaction(
@@ -109,7 +109,8 @@ declare
   v_table_name name := lower(table_name);
   v_table_oid oid := (v_schema||'.'||v_table_name)::regclass::oid;
   v_table_owner name;
-  v_table_columns name[];
+  v_table_columns_name name[];
+  v_table_columns_type name[];
   v_table_columns_pos int[];
   v_table_columns_comment text[];
   v_table_has_pkey boolean;
@@ -140,22 +141,25 @@ declare
   --
   v_sql text; 
   v_newline char := chr(10);
+  v_type_convert text; 
   rec record;
 begin
   select relowner::regrole::name into v_table_owner from pg_class where oid=v_table_oid;
   call pghist.hist_object_names(v_schema, v_table_name, v_hist_schema, v_hist_table_name, v_trigger_iud_function_name, v_trigger_iud_name, v_trigger_truncate_function_name, v_trigger_truncate_name, v_table_at_timestamp_name, v_table_changes_name);  
   select array_agg(attname),
+         array_agg(typname),
          array_agg(column_pos),         
          array_agg(quote_nullable(column_comment)),
          string_agg('old.'||attname,','),
          string_agg('new.'||attname,',')
-    into v_table_columns,
+    into v_table_columns_name,
+         v_table_columns_type,
          v_table_columns_pos,         
          v_table_columns_comment,
          v_hist_table_values_old,
          v_hist_table_values_new
     from ( 
-      select attname, row_number() over (order by attnum) column_pos, col_description(attrelid,attnum) column_comment    
+      select attname, typname, row_number() over (order by attnum) column_pos, col_description(attrelid,attnum) column_comment    
         from pg_attribute a
         join pg_type t on t.oid=a.atttypid 
         where attrelid=v_table_oid and attnum>0
@@ -204,8 +208,8 @@ begin
     call pghist.hist_execute_sql(v_schema, v_table_name, v_sql);
     call pghist.hist_execute_sql(v_schema, v_table_name, 'create index on '||v_hist_schema||'.'||v_hist_table_name||'(hist_transaction_id)');
     call pghist.hist_execute_sql(v_schema, v_table_name, 'lock table '||v_hist_schema||'.'||v_hist_table_name||' in exclusive mode');
-    v_sql := 'insert into '||v_hist_schema||'.'||v_hist_table_name||' ('||v_hist_table_fix_columns||array_to_string(v_table_columns,',')||')'; 
-    v_sql := v_sql||'  select nextval(''pghist.hist_id_seq''),'||pghist.hist_transaction_id()||',''HIST_CREATE'',''NEW'','||v_table_value_pkey||','||array_to_string(v_table_columns,',')||' from only '||v_schema||'.'||v_table_name;
+    v_sql := 'insert into '||v_hist_schema||'.'||v_hist_table_name||' ('||v_hist_table_fix_columns||array_to_string(v_table_columns_name,',')||')'; 
+    v_sql := v_sql||'  select nextval(''pghist.hist_id_seq''),'||pghist.hist_transaction_id()||',''HIST_CREATE'',''NEW'','||v_table_value_pkey||','||array_to_string(v_table_columns_name,',')||' from only '||v_schema||'.'||v_table_name;
     call pghist.hist_execute_sql(v_schema, v_table_name, v_sql);   
     call pghist.hist_execute_sql(v_schema, v_table_name, 'grant select on '||v_hist_schema||'.hist_transaction,'||v_hist_schema||'.'||v_hist_table_name||' to '||v_table_owner);
     v_hist_table_oid := (v_hist_schema||'.'||v_hist_table_name)::regclass::oid;
@@ -265,10 +269,10 @@ begin
   v_sql := v_sql||'    v_transaction_id := '||v_hist_schema||'.hist_transaction_id();'||v_newline;
   v_sql := v_sql||'    v_hist_id := nextval(''pghist.hist_id_seq'');'||v_newline;   
   v_sql := v_sql||'    if (tg_op in (''INSERT'',''UPDATE'')) then'||v_newline;
-  v_sql := v_sql||'        insert into '||v_hist_schema||'.'||v_hist_table_name||' ('||v_hist_table_fix_columns||array_to_string(v_table_columns,',')||') values ('||v_hist_table_fix_values||'''NEW'','||v_table_value_pkey_new||','||v_hist_table_values_new||');'||v_newline;
+  v_sql := v_sql||'        insert into '||v_hist_schema||'.'||v_hist_table_name||' ('||v_hist_table_fix_columns||array_to_string(v_table_columns_name,',')||') values ('||v_hist_table_fix_values||'''NEW'','||v_table_value_pkey_new||','||v_hist_table_values_new||');'||v_newline;
   v_sql := v_sql||'    end if;'||v_newline;
   v_sql := v_sql||'    if (tg_op in (''UPDATE'',''DELETE'')) then'||v_newline;
-  v_sql := v_sql||'        insert into '||v_hist_schema||'.'||v_hist_table_name||' ('||v_hist_table_fix_columns||array_to_string(v_table_columns,',')||') values ('||v_hist_table_fix_values||'''OLD'','||v_table_value_pkey_old||','||v_hist_table_values_old||');'||v_newline;
+  v_sql := v_sql||'        insert into '||v_hist_schema||'.'||v_hist_table_name||' ('||v_hist_table_fix_columns||array_to_string(v_table_columns_name,',')||') values ('||v_hist_table_fix_values||'''OLD'','||v_table_value_pkey_old||','||v_hist_table_values_old||');'||v_newline;
   v_sql := v_sql||'    end if;'||v_newline;
   v_sql := v_sql||'    return null;'||v_newline;
   v_sql := v_sql||'end;'||v_newline;
@@ -282,8 +286,8 @@ begin
   v_sql := v_sql||'  v_transaction_id bigint;'||v_newline;
   v_sql := v_sql||'begin '||v_newline;
   v_sql := v_sql||'  v_transaction_id := pghist.hist_transaction_id();'||v_newline;
-  v_sql := v_sql||'  insert into '||v_hist_schema||'.'||v_hist_table_name||' ('||v_hist_table_fix_columns||array_to_string(v_table_columns,',')||')'||v_newline; 
-  v_sql := v_sql||'    select nextval(''pghist.hist_id_seq''),v_transaction_id,''TRUNCATE'',''OLD'','||v_table_value_pkey||','||array_to_string(v_table_columns,',')||' from only '||v_schema||'.'||v_table_name||';'||v_newline;
+  v_sql := v_sql||'  insert into '||v_hist_schema||'.'||v_hist_table_name||' ('||v_hist_table_fix_columns||array_to_string(v_table_columns_name,',')||')'||v_newline; 
+  v_sql := v_sql||'    select nextval(''pghist.hist_id_seq''),v_transaction_id,''TRUNCATE'',''OLD'','||v_table_value_pkey||','||array_to_string(v_table_columns_name,',')||' from only '||v_schema||'.'||v_table_name||';'||v_newline;
   v_sql := v_sql||'  return null;'||v_newline;
   v_sql := v_sql||'end;'||v_newline;
   v_sql := v_sql||'$$';
@@ -298,7 +302,7 @@ begin
     v_sql := v_sql||'  rec '||v_schema||'.'||v_table_name||'%rowtype;'||v_newline;
     v_sql := v_sql||'begin'||v_newline;
     v_sql := v_sql||'  for rec in '||v_newline;
-    v_sql := v_sql||'    select '||array_to_string(v_table_columns,',')||' from ('||v_newline;
+    v_sql := v_sql||'    select '||array_to_string(v_table_columns_name,',')||' from ('||v_newline;
     v_sql := v_sql||'      select row_number() over (partition by '||v_table_at_timestamp_columns_pkey||' order by hist_id desc,hist_state) hist_row_number,h.*'||v_newline;
     v_sql := v_sql||'         from '||v_hist_schema||'.'||v_hist_table_name||' h'||v_newline;
     v_sql := v_sql||'         join pghist.hist_transaction t on t.id=h.hist_transaction_id and t.xact_start<transaction_start'||v_newline;      
@@ -309,7 +313,7 @@ begin
     if v_children is not null then    
       v_sql := v_sql||'  if cascade then'||v_newline;
       for i in 1..array_length(v_children, 1) loop
-        v_sql := v_sql||'    for rec in select '||array_to_string(v_table_columns,',')||' from '||v_children[i][1]||'.'||v_children[i][2]||'_at_timestamp(transaction_start, true) loop'||v_newline;
+        v_sql := v_sql||'    for rec in select '||array_to_string(v_table_columns_name,',')||' from '||v_children[i][1]||'.'||v_children[i][2]||'_at_timestamp(transaction_start, true) loop'||v_newline;
         v_sql := v_sql||'      return next rec;'||v_newline;
         v_sql := v_sql||'    end loop;'||v_newline;
       end loop;   
@@ -355,21 +359,22 @@ begin
   v_sql := v_sql||'    rec_change.hist_id  := rec_hist.hist_id ;'||v_newline;
   v_sql := v_sql||'    if rec_hist.hist_operation = ''INSERT'' then'||v_newline;
   v_sql := v_sql||'      rec_change.value_old := null;'||v_newline; 
-  for i in 1..array_length(v_table_columns, 1) loop
-    v_sql := v_sql||'      if rec_hist.'||v_table_columns[i]||' is not null then rec_change.column_name := '''||v_table_columns[i]||'''; rec_change.column_pos := '||v_table_columns_pos[i]||'; rec_change.column_comment := column_comments['||v_table_columns_pos[i]||']; rec_change.value_new := rec_hist.'||v_table_columns[i]||'; return next rec_change; end if;'||v_newline;
+  for i in 1..array_length(v_table_columns_name, 1) loop
+    v_sql := v_sql||'      if rec_hist.'||v_table_columns_name[i]||' is not null then rec_change.column_name := '''||v_table_columns_name[i]||'''; rec_change.column_pos := '||v_table_columns_pos[i]||'; rec_change.column_comment := column_comments['||v_table_columns_pos[i]||']; rec_change.value_new := rec_hist.'||v_table_columns_name[i]||'; return next rec_change; end if;'||v_newline;
   end loop;
   v_sql := v_sql||'    end if;'||v_newline;
   v_sql := v_sql||'    if rec_hist.hist_operation = ''UPDATE'' then'||v_newline;
   v_sql := v_sql||'      fetch cur_hist into rec_hist_update_old;'||v_newline;
   v_sql := v_sql||'      exit when not found;'||v_newline;
-  for i in 1..array_length(v_table_columns, 1) loop
-    v_sql := v_sql||'      if (rec_hist.'||v_table_columns[i]||' != rec_hist_update_old.'||v_table_columns[i]||') or (rec_hist.'||v_table_columns[i]||' is not null and rec_hist_update_old.'||v_table_columns[i]||' is null) or (rec_hist.'||v_table_columns[i]||' is null and rec_hist_update_old.'||v_table_columns[i]||' is not null) then rec_change.column_name := '''||v_table_columns[i]||'''; rec_change.column_pos := '||v_table_columns_pos[i]||'; rec_change.column_comment := column_comments['||v_table_columns_pos[i]||']; rec_change.value_old := rec_hist_update_old.'||v_table_columns[i]||'; rec_change.value_new := rec_hist.'||v_table_columns[i]||'; return next rec_change; end if;'||v_newline;
+  for i in 1..array_length(v_table_columns_name, 1) loop
+    v_type_convert := case when v_table_columns_type[i]='json' then '::text' else '' end;
+    v_sql := v_sql||'      if (rec_hist.'||v_table_columns_name[i]||v_type_convert||' != rec_hist_update_old.'||v_table_columns_name[i]||v_type_convert||') or (rec_hist.'||v_table_columns_name[i]||' is not null and rec_hist_update_old.'||v_table_columns_name[i]||' is null) or (rec_hist.'||v_table_columns_name[i]||' is null and rec_hist_update_old.'||v_table_columns_name[i]||' is not null) then rec_change.column_name := '''||v_table_columns_name[i]||'''; rec_change.column_pos := '||v_table_columns_pos[i]||'; rec_change.column_comment := column_comments['||v_table_columns_pos[i]||']; rec_change.value_old := rec_hist_update_old.'||v_table_columns_name[i]||'; rec_change.value_new := rec_hist.'||v_table_columns_name[i]||'; return next rec_change; end if;'||v_newline;
   end loop;
   v_sql := v_sql||'    end if;'||v_newline;
   v_sql := v_sql||'    if rec_hist.hist_operation in (''DELETE'',''TRUNCATE'') then'||v_newline;
   v_sql := v_sql||'      rec_change.value_new := null;'||v_newline; 
-  for i in 1..array_length(v_table_columns, 1) loop
-    v_sql := v_sql||'      if rec_hist.'||v_table_columns[i]||' is not null then rec_change.column_name := '''||v_table_columns[i]||'''; rec_change.column_pos := '||v_table_columns_pos[i]||'; rec_change.column_comment := column_comments['||v_table_columns_pos[i]||']; rec_change.value_old := rec_hist.'||v_table_columns[i]||'; return next rec_change; end if;'||v_newline;
+  for i in 1..array_length(v_table_columns_name, 1) loop
+    v_sql := v_sql||'      if rec_hist.'||v_table_columns_name[i]||' is not null then rec_change.column_name := '''||v_table_columns_name[i]||'''; rec_change.column_pos := '||v_table_columns_pos[i]||'; rec_change.column_comment := column_comments['||v_table_columns_pos[i]||']; rec_change.value_old := rec_hist.'||v_table_columns_name[i]||'; return next rec_change; end if;'||v_newline;
   end loop;
   v_sql := v_sql||'    end if;'||v_newline;
   v_sql := v_sql||'  end loop;'||v_newline;
