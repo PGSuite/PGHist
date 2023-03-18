@@ -41,6 +41,8 @@ comment on column test.invoice_product.invoice_id is 'Invoice';
 comment on column test.invoice_product.product_id is 'Product';
 comment on column test.invoice_product.quantity is 'Quantity';
 
+create index on test.invoice_product(invoice_id); 
+
 call pghist.hist_enable('test', 'document');
 call pghist.hist_enable('test', 'invoice');
 call pghist.hist_enable('test', 'product');
@@ -83,7 +85,7 @@ select * from test.document_at_timestamp(now()-interval '15 second');
 select * from test.document_changes('id=$1',12);
 select * from test.document_at_timestamp(now()-interval '15 second') where id=12;
 
--- Changes in two related tables to display in interface
+-- Changes in two related tables to display in interface, fast execution provides index invoice_product(invoice_id)
 select transaction_timestamp,row_desc,column_comment,coalesce(value_old_desc,value_old) old_value,coalesce(value_new_desc,value_new) new_value,operation,db_user
   from (
     select * from test.invoice_changes('id=$1',12)

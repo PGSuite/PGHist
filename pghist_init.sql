@@ -2,7 +2,7 @@ create schema if not exists pghist;
 
 create or replace function pghist.pghist_version() returns varchar language plpgsql as $$
 begin
-  return '23.1.4'; -- 2023.01.14 08:23:58
+  return '23.1.6'; -- 2023.03.18 14:05:34
 end; $$;
 
 create table if not exists pghist.hist_transaction(
@@ -67,7 +67,7 @@ begin
     return v_id_text::bigint;
   end if;  
   insert into pghist.hist_transaction(xid, xact_start, application_name, backend_pid, backend_start, db_user, db_client_addr, db_client_hostname, app_user, app_client_addr, app_client_hostname)
-    select txid_current(), xact_start, application_name, pg_backend_pid(), backend_start, current_user, client_addr, client_hostname, current_setting('app.user', true), current_setting('app.client_addr', true), current_setting('app.client_hostname', true)
+    select txid_current(), xact_start, application_name, pg_backend_pid(), backend_start, usename, client_addr, client_hostname, current_setting('app.user', true), current_setting('app.client_addr', true), current_setting('app.client_hostname', true)
     from pg_stat_activity p where pid = pg_backend_pid()
     returning id into v_id;
   v_id_text := set_config('pghist.transaction_id', v_id::text, true);
