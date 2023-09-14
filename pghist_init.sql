@@ -2,7 +2,7 @@ create schema if not exists pghist;
 
 create or replace function pghist.pghist_version() returns varchar language plpgsql as $$
 begin
-  return '23.1.6'; -- 2023.03.18 14:05:34
+  return '23.3.10'; -- 2023.09.14 19:28:16
 end; $$;
 
 create table if not exists pghist.hist_transaction(
@@ -379,7 +379,7 @@ begin
   v_sql := v_sql||'  v_query := v_query||''  from '||v_hist_schema||'.'||v_hist_table_name||' h'';'||v_newline;
   v_sql := v_sql||'  v_query := v_query||''  join '||v_hist_schema||'.hist_transaction t on t.id=h.hist_transaction_id'';'||v_newline; 
   v_sql := v_sql||'  v_query := v_query||coalesce(''  where hist_id in (select hist_id from '||v_hist_schema||'.'||v_hist_table_name||' row where ''||where_clause||'')'','''');'||v_newline;
-  v_sql := v_sql||'  v_query := v_query||''  order by hist_id'';'||v_newline; 
+  v_sql := v_sql||'  v_query := v_query||''  order by hist_id,hist_state'';'||v_newline; 
   v_sql := v_sql||'  open cur_hist for execute v_query using where_param;'||v_newline;
   v_sql := v_sql||'  rec_change.schema := '''||v_schema||''';'||v_newline;
   v_sql := v_sql||'  rec_change.table_name := '''||v_table_name||''';'||v_newline;

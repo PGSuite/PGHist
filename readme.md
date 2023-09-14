@@ -1,13 +1,14 @@
-## PGHist | Changes history and tables audit in PostgreSQL
+## PGHist | History of table changes in PostgreSQL
 
-### [Download](http://pghist.org/en/download/) ###
-### [Documentation](http://pghist.org/en/documentation/) ### 
-### [Example](http://pghist.org/en/#example) ### 
+### [Download](https://pghist.org/en/download/) ###
+### [Documentation](https://pghist.org/en/documentation/) ### 
+### [Example](https://pghist.org/en/#example) ### 
 
 ### Description ###
 
-Tool keeps history of table changes and allows to get table as of date-time in the past, list of changes by fields indicating user, time of the change, transaction and other technical information.
-To display information in user interface, SQL expressions are defined to describe changed table rows and fields. 
+Tool PGHIST keeps history of table changes and allows to get list of changes by fields indicating user, time of the change,
+transaction, other technical information (logging, audit) and table as of date-time in the past (versioning).
+To display information in user interface, SQL expressions are defined to describe changed table rows and fields.
 
 
 ### Main functions ###
