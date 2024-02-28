@@ -2,25 +2,31 @@
 
 ### [Download](https://pghist.org/en/download/) ###
 ### [Documentation](https://pghist.org/en/documentation/) ### 
-### [Example](https://pghist.org/en/#example) ### 
+### [Example](https://pghist.org/en/#example-simple) ### 
 
 ### Description ###
 
-Tool PGHIST keeps history of table changes and allows to get list of changes by fields indicating user, time of the change,
-transaction, other technical information (logging, audit) and table as of date-time in the past (versioning).
+Tool PGHIST keeps history of table changes and allows to get log(audit) of changes by row, list of changes by field indicating user,
+time of the change, transaction, other technical information and table as of date-time in the past (versioning).
 To display information in user interface, SQL expressions are defined to describe changed table rows and fields.
 
 
-### Main functions ###
+### Main functions and view###
   
 *   **pghist.hist\_enable(\[schema\],\[table\])** - enable history keeping 
-  
-*   **\[schema\].\[table\]\_at\_timestamp** - table at date-time in the past
-  
-*   **\[schema\].\[table\]\_changes** - list of changes 
-  
-*   **pghist.hist\_disable(\[schema\],\[table\])** - disable history keeping
 
+*   **\[schema\].\[table\]_hist** - log(audit) of changes by row, optimized for analysis
+  
+*   **\[schema\].\[table\]\_changes** - list of changes by field, optimized for display to the user
+
+*   **\[schema\].\[table\]\_at\_timestamp** - table at date-time in the past (versioning)
+
+pghist.hist_enable([schema],[table])	-	enable history keeping
+[schema].[table]_hist	-	log(audit) of changes by row, optimized for analysis
+[schema].[table]_changes	-	list of changes by field, optimized for display to the user
+[schema].[table]_at_timestamp	-	table at date-time in the past (versioning)
+
+  
 
 ### Important qualities ### 
 
