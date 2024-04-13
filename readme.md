@@ -6,9 +6,19 @@
 
 ### Description ###
 
-Tool PGHIST keeps history of table changes and allows to get log(audit) of changes by row, list of changes by field indicating user,
-time of the change, transaction, other technical information and table as of date-time in the past (versioning).
+Tool PGHIST keeps history of table changes and allows to get log(audit) of changes by row,
+list of changes by field indicating user, time of the change, SQL query, transaction, other technical information
+and table as of date-time in the past (versioning).
 To display information in user interface, SQL expressions are defined to describe changed table rows and fields.
+It is possible to override the operation name and username functions.
+
+
+### Design and working principle ###
+
+PGHIST is a schema with procedures and common tables: transactions, SQL expressions.
+When history is enabled (procedure pghist.hist_enable), for specified table created additional table, triggers for insert,update,delete,truncate, stored procedures and view for obtaining data.
+When a table is changed, triggers are fired that modify the history table.
+There are also event triggers that rebuild the history table and recreate the stored procedures.
 
 
 ### Main functions and view ###
