@@ -1,16 +1,16 @@
 do $$
 declare
-  rec record;
+  v_rec record;
 begin
-  if not exists (select 1 from pg_namespace where nspname='pghist') then 
+  if to_regnamespace('pghist') is null then	
     return;
   end if;	
-  for rec in 
-    select schemaname,tablename
-      from pg_tables
-      where pghist.hist_exists(schemaname::varchar,tablename::varchar)
+  for v_rec in
+    select relnamespace::regnamespace::name schema, relname table_name
+      from pg_class
+      where relkind='r' and pghist.hist_exists(relnamespace::regnamespace::name,relname)
   loop
-    call pghist.hist_disable(rec.schemaname::varchar,rec.tablename::varchar);
+    call pghist.hist_disable(v_rec.schema,v_rec.table_name);
   end loop;
 end; $$;
 
