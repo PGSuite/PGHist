@@ -263,7 +263,7 @@ end $$;
 
 
 
-create or replace procedure pghist.hist_enable(schema name, table_name name, master_table_schema name default null, master_table_name name default null) security definer language plpgsql as $body$
+create or replace procedure pghist.hist_enable(schema name, table_name name, master_table_schema name default null, master_table_name name default null, exclude_columns name[] default null) security definer language plpgsql as $body$
 declare 
   v_schema name := lower(schema);
   v_table_name name := lower(table_name);
@@ -316,7 +316,7 @@ begin
     from pg_attribute a
     join pg_type t on t.oid=a.atttypid
     join pg_namespace tn on tn.oid=t.typnamespace
-    where attrelid=v_table_oid and attnum>0 and not attisdropped;
+    where attrelid=v_table_oid and attnum>0 and not attisdropped and not attname = ANY(coalesce(exclude_columns, '{}'));
   select coalesce(array_agg(attname order by col_pos),array[]::name[])
     into v_columns_pkey
     from unnest( (select conkey from pg_constraint where conrelid=v_table_oid and contype='p') ) with ordinality c(col_num,col_pos)
