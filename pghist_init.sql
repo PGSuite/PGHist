@@ -2,7 +2,7 @@ create schema if not exists pghist;
 
 create or replace function pghist.pghist_version() returns varchar language plpgsql as $$
 begin
-  return '24.2.7'; -- 2024.06.03 18:13:57
+  return '24.2.8'; -- 2024.06.30 15:58:57
 end; $$;
 
 create table if not exists pghist.hist_transaction(
@@ -456,7 +456,7 @@ begin
     v_type_convert := case when v_columns_type[array_position(v_columns_name, v_col)] in ('json','_json','xml','_xml') then '::text' else '' end;
     v_sql_condition := '(o.'||v_col||v_type_convert||'!=n.'||v_col||v_type_convert||') or (o.'||v_col||' is null and n.'||v_col||' is not null) or (o.'||v_col||' is not null and n.'||v_col||' is null)';
     v_sql := v_sql||'               ||(case when '||v_sql_condition||' then ''{'||v_col||'}'' end)::name[]'||case when array_position(v_columns_old,v_col)!=array_length(v_columns_old,1) then v_newline else '' end;
-    v_sql_part := v_sql_part||','||v_newline||'             case when '||v_sql_condition||' then o.'||v_col||' end' end;
+    v_sql_part := v_sql_part||','||v_newline||'             case when '||v_sql_condition||' then o.'||v_col||' end';
   end loop;
   v_sql := v_sql||v_sql_part||v_newline||
     '       from (select row_number() over () hist_row_num,* from rows_old) o'||v_newline||
