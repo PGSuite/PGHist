@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+* {
+    margin:  0px;
+    padding: 0px;
+    border:  0px; 
+}
+
+html {
+    height: 100%;
+    font: 14px Verdana, Arial, Helvetica, sans-serif;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+div {
+    text-align: justify;	
+}
+
+p {
+    padding: 5px;
+}
+
+ul {
+    padding-left: 20px;
+}
+
+li {
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+a, a:link, a:active, a:visited {
+   #color: #0000EE;
+   color: #0000DD;
+   #color: red;
+}
+
+.background-header {
+    background: #F7F7FF;
+}
+
+.background-menu {
+    background: #D0E0FF;
+}
+
+.background-menu-line {
+    background: #90A0C0;
+}
+
+.border-color-menu {
+    border-color: #90A0C0;
+}
+
+.color-menu-item {
+    color: #2020A0;
+}
+
+.color-menu-item-selected { 
+    color: #E78C43; 
+}
+
+.background-menu-selected-top { 
+    background: #C8D8E8;
+}
+
+.border-color-div-source-code {
+    border-color: #909090;
+}
+
+.color-source-sql-comment {
+    color: #008000;
+}
+
+.color-source-sql-string {
+    color: #800060;
+}
+
+.color-source-sql-keyword {
+    color: #000080;
+}
+
+.color-source-sql-block-border {
+    color: #DD0000;
+}
+
+.color-source-shell {
+    color: green;
+}
+
+.background-source-shell {
+    background: black;    
+}
+
+.color-source-html-tag {
+    color: #0000CD;
+}
+
+.color-source-html-tag-attrubites {
+    color: #B22222;
+}
+
+.color-source-html-tag-value {
+    color: #008000;
+}
+
+.color-source-html-comment {
+    color: #808080;
+}
+
+.color-source-js-comment {
+    color: #008000;
+}
+
+.color-source-js-keyword {
+    color: #000080;
+}
+
+.color-source-js-string {
+    color: #800060;
+}
+
+.div-page {
+    #border: solid 3px red;
+    display: flex;
+    flex-wrap: nowrap;
+}
+
+.div-header-middle {
+    #border: solid 3px green;
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+	text-align: center;
+}
+
+.div-header-sidebar {
+    #border: solid 3px blue;
+    display: flex;    
+    justify-content: center; 
+    align-items: center;
+    width: 100%;
+} 
+
+.div-content {
+    display: flex;
+    flex-wrap: nowrap;
+    #justify-content: space-evenly; 
+    justify-content: space-between;
+}
+
+.div-content-panel-left {
+    #border: solid 3px green;
+    width:     260px;
+    min-width: 260px;
+    max-width: 260px;
+    float: left;
+    text-align: left;
+    padding-top: 10px;
+    padding-bottom: 15px;
+} 
+
+.div-content-body {
+    #border: solid 3px blue;
+    #margin-left: 270px;
+    padding: 10px;
+    border-left-style: solid;
+    border-left-width: 2px;
+}
+
+.menu-border-top {
+    border-top-style: solid;
+    border-top-width: 2px;
+} 
+
+.menu-border-left {
+    border-left-style: solid;
+    border-left-width: 2px;
+}
+
+.menu-border-right {
+    border-right-style: solid;
+    border-right-width: 2px;
+}
+
+.menu-border-bottom {
+    border-bottom-style: solid;
+    border-bottom-width: 2px;
+}
+
+.menu-top-item {
+    text-decoration: none;
+    font-size: larger;
+    white-space: nowrap;
+}
+
+.menu-top-item-selected {
+    font-size: larger;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.menu-panel-left-item {
+    padding-left: 15px;
+    text-decoration: none; 
+    font-size: larger;
+}
+
+.menu-panel-left-item-selected {
+    padding-left: 25px;
+    font-size: larger;
+    font-weight: bold;
+}
+
+.nav-static-line {
+    font-size: larger;
+    background: #D0E0FF;
+}
+    
+.nav-static-line > ul {
+    list-style: none;
+    padding: 0px;
+}
+
+.nav-static-line > ul > li {
+    #border: 2px solid red;
+    padding: 0px;
+    float: left;    
+    position: relative;
+    text-align: center;
+    text-decoration: none;
+}
+   
+.nav-static-line .item {
+    padding: 7px;      
+    display: block;
+    text-align: center;
+    text-decoration: none;
+}
+
+.nav-static-line .item-selected {
+    font-weight: bold;
+}
+
+.nav-mobile {
+    margin: 0 auto;
+	float: left;
+    background: #D0E0FF;
+}
+   
+.nav-mobile ul {
+    list-style: none;
+    margin: 0 auto;
+    padding: 0;
+}
+
+.nav-mobile li li {
+	width: 160px;
+}
+   
+.nav-mobile > ul > li {
+    float: left;
+    position: relative;
+    text-align: left;
+    text-decoration: none;
+}
+
+.nav-mobile-group-root {
+    display: none;
+    position: absolute;
+    top: 100%;
+}
+
+.nav-mobile li:hover > .nav-mobile-group-root {
+    display: block;
+}
+
+.nav-mobile-group-child {
+	display: none;
+	position: absolute;
+	left: 100%;
+	top: 0;
+}
+    
+.nav-mobile li li:hover > .nav-mobile-group-child-1 {
+	display: block;
+}
+
+.nav-mobile li li li:hover > .nav-mobile-group-child-2 {
+	display: block;
+}
+
+.nav-mobile-item {  
+    padding: 6px;    
+    display: block;
+    text-align: left;
+    text-decoration: none;
+    color: #2020A0;	
+}
+
+.nav-mobile-item:hover {
+   background: #2F718E;
+}
+
+.ul-articles li {
+    padding-top: 17px;
+}
+
+.div-video-iframe {
+    width: 560px;
+    height: 315px;
+}
+
+.div-source-code {
+    #border: solid 2px red;
+    overflow:scroll;
+    min-width: 95%;
+    max-width: 200px;   
+    border-style: solid;
+    border-width: 1px; 
+    font-family: monospace;
+    text-align: left;
+}
+
+.div-download {
+    border-style: solid;
+    border-width: 1px;  
+    text-align: center;
+}
+
+.a-download {
+    text-decoration: none;
+}
+
+.div-documentation-synopsis {
+    #border: solid 3px red;
+    margin-left:    30px;
+    margin-right:    0px; 
+    margin-top:      3px;
+    margin-bottom:   0px;
+}
+
+.div-documentation-desc {
+    #border: solid 3px red;
+    margin-left:    30px;
+    margin-right:  100px; 
+    margin-top:      3px;
+    margin-bottom:   0px;
+}
+
+@media (max-width: 900px) {
+
+    #header-desktop {
+        display: none;
+    }
+
+    #menu-top-line-1 {
+        display: none;
+    }
+
+    .div-content-panel-left {
+        display: none;
+    } 
+
+    .div-content-body {
+        border-left-width: 0px;
+    }
+
+    .div-video-iframe {
+        width: 370px;
+        height: 210px;
+    }
+
+}
+
+@media not (max-width: 900px) {
+
+    #header-mobile {
+        display: none;
+    }
+
+}
+
+.button-top {
+  display: none; 
+  position: fixed;
+  right: 10px;
+  bottom: 40px;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 5px 8px;
+  border-style: solid; 
+  border-width: 2px;
+}
+
+.button-top-visible {
+  display: block;
+} 
+</style>
+
+
+<title>PGHist | Documentation</title>
+	
+</head>
+<body>
+
+<div id="header-desktop" class="div-page background-header menu-border-bottom border-color-menu" style="justify-content: center; padding: 10px;">
+
+  <h1>PGHist | Documentation</h1>
+
+</div>
+
+
+<div class='div-page' style='flex: 1; clear:both;'>
+
+  <div class='div-content-panel-left'>
+    
+
+<ul>
+<li><a href="#hist_enable">pghist.hist_enable</a></li>
+<li><a href="#view_hist">[schema].[table]_hist</a></li>
+<li><a href="#table_changes">[schema].[table]_changes</a></li>
+<li><a href="#table_at_timestamp">[schema].[table]_at_timestamp</a></li>
+<li><a href="#hist_disable">pghist.hist_disable</a></li>
+<li><a href="#hist_expression_desc">SQL expressions of descriptions</a></li>
+<li><a href="#hist_custom_funcs">Customization functions</a></li>
+<li><a href="#hist_table">History table</a></li>
+<li><a href="#common_tables">Common tables</a></li>
+<li><a href="#pghist_version">pghist.pghist_version</a></li>
+<li><a href="#hist_sql_log">pghist.hist_sql_log</a></li>
+</ul>
+
+
+  </div>
+
+  <div class='div-content-body border-content-body border-color-menu'>
+    
+
+<a id="hist_enable"></a>
+<p style="font-size:larger;"><b>pghist.hist_enable</b>(schema name, table_name name)</p>
+<br>
+Procedure enable keeping history of changes for table, create history table, triggers and functions that return historical data
+<br>
+<br>
+Parameters:<br>
+<table>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">schema</td><td style="text-align: center; width: 30px;">-</td><td>table schema (optional)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">table_name</td><td style="text-align: center; width: 30px;">-</td><td>table name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">master_table_schema</td><td style="text-align: center; width: 30px;">-</td><td>master table schema (optional)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">master_table_name</td><td style="text-align: center; width: 30px;">-</td><td>master table name (optional)</td></tr>
+</table>
+
+<br>
+Examples:<br>
+<div class="div-source-code border-color-div-source-code" style="width: 60%; height: 100px;">
+<pre><span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'document'</span>);
+<span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>);
+<span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, <span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>);
+</pre>
+</div>
+
+<div style="height: 25px;"></div>
+<div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
+
+
+
+<a id="view_hist"></a>
+<p style="font-size:larger;"><b>[schema].[table]_hist</b></p>
+<br>
+View contains a list of changes by row, created when history keeping is enabled.<br>
+Sorted by first two columns to provide chronology
+<br>
+<br>
+Columns:<br>
+<table>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_statement_num</td><td style="text-align: center; width: 30px;">-</td><td>common SQL statement number</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_row_num</td><td style="text-align: center; width: 30px;">-</td><td>row number in dataset that modified SQL statement</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_timestamp</td><td style="text-align: center; width: 30px;">-</td><td>SQL statement start date-time</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_operation</td><td style="text-align: center; width: 30px;">-</td><td>operation: INSERT,UPDATE,DELETE,TRUNCATE</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_update_columns</td><td style="text-align: center; width: 30px;">-</td><td>changed columns for UPDATE operation</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_db_user</td><td style="text-align: center; width: 30px;">-</td><td>database user</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_app_user</td><td style="text-align: center; width: 30px;">-</td><td>application user defined as current_setting('app.user')</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_application_name</td><td style="text-align: center; width: 30px;">-</td><td>application name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_query_text</td><td style="text-align: center; width: 30px;">-</td><td>SQL query text</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_statement_id</td><td style="text-align: center; width: 30px;">-</td><td>SQL statement ID referenced on pghist.hist_statement table</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[primary key column(s)]</td><td style="text-align: center; width: 30px;">-</td><td>primary key value (can be several)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[column(s) of foreign key on master table]</td><td style="text-align: center; width: 30px;">-</td><td>foreign key value on master table (optional, can be several)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[column...]_old</td><td style="text-align: center; width: 30px;">-</td><td>old value for each column of table [schema].[table]</td></tr>
+</table>
+
+
+<br>
+Examples:<br>
+<div class="div-source-code border-color-div-source-code" style="width: 60%; height: 110px;">
+<pre><span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_hist;
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_hist <span class="color-source-sql-keyword">where</span> id=2;
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_hist <span class="color-source-sql-keyword">where</span> hist_operation=<span class="color-source-sql-string">'DELETE'</span>;
+
+</pre>
+</div>
+
+<div style="height: 25px;"></div>
+<div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
+
+
+
+<a id="table_changes"></a>
+<p style="font-size:larger;"><b>[schema].[table]_changes</b>(where_clause text, where_param anyelement, row_comment_clause text, cascade boolean)</p>
+<br>
+Function return changes in the table (setof pghist.table_change), created when history keeping is enabled.<br>
+Sorting by the first three columns provides chronology by time, 
+to get related data from multiple tables, recommended to use operator <em>union all</em>
+<br>
+<br>
+Parameters:<br>
+<table>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">where_clause</td><td style="text-align: center; width: 30px;">-</td><td>condition on table (optional)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">where_param</td><td style="text-align: center; width: 30px;">-</td><td>value of the parameter in where_clause (optional)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">columns_immutable</td><td style="text-align: center; width: 30px;">-</td><td>return values of immutable columns (default  false)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">insert_detail</td><td style="text-align: center; width: 30px;">-</td><td>detail INSERT operation by column (default false)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">cascade</td><td style="text-align: center; width: 30px;">-</td><td>process inherited tables (default true)</td></tr>
+</table>
+
+
+<br>
+Returned dataset columns:<br>
+<table>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">statement_num</td><td style="text-align: center; width: 30px;">-</td><td>common SQL statement number</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">row_num</td><td style="text-align: center; width: 30px;">-</td><td>row number in dataset that modified SQL statement</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_num</td><td style="text-align: center; width: 30px;">-</td><td>column number in row</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">timestamp</td><td style="text-align: center; width: 30px;">-</td><td>operation date-time</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">operation</td><td style="text-align: center; width: 30px;">-</td><td>operation: INSERT,UPDATE,DELETE,TRUNCATE</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">operation_name</td><td style="text-align: center; width: 30px;">-</td><td>operation name, specified by the overridden function pghist.hist_custom_operation_name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_name</td><td style="text-align: center; width: 30px;">-</td><td>column name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_comment</td><td style="text-align: center; width: 30px;">-</td><td>column comment</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">value_old</td><td style="text-align: center; width: 30px;">-</td><td>old value</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">value_old_desc</td><td style="text-align: center; width: 30px;">-</td><td>description of old value, can be overridden by the procedure pghist.hist_expression_value_desc</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">value_new</td><td style="text-align: center; width: 30px;">-</td><td>new value</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">value_new_desc</td><td style="text-align: center; width: 30px;">-</td><td>description of new value, can be overridden by the procedure pghist.hist_expression_value_desc</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">row_desc</td><td style="text-align: center; width: 30px;">-</td><td>description of row, can be overridden by the procedure pghist.hist_expression_row_desc</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">db_user</td><td style="text-align: center; width: 30px;">-</td><td>database user</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">db_user_name</td><td style="text-align: center; width: 30px;">-</td><td>database user name, specified by the overridden function pghist.hist_custom_db_user_name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">app_user</td><td style="text-align: center; width: 30px;">-</td><td>application user, specified by the overridden function pghist.hist_custom_app_user</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">db_user_name</td><td style="text-align: center; width: 30px;">-</td><td>application user name, specified by the overridden function pghist.hist_custom_app_user_name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">schema</td><td style="text-align: center; width: 30px;">-</td><td>schema</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">table_name</td><td style="text-align: center; width: 30px;">-</td><td>table name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">table_comment</td><td style="text-align: center; width: 30px;">-</td><td>table comment</td></tr>
+</table>
+
+
+<br>
+Examples:<br>
+<div class="div-source-code border-color-div-source-code" style="width: 60%; height: 130px;">
+<pre><span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_changes();
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(<span class="color-source-sql-string">'id=&dollar;1'</span>,2)
+  <span class="color-source-sql-keyword">where</span> column_name <span class="color-source-sql-keyword">not</span> <span class="color-source-sql-keyword">in</span> (<span class="color-source-sql-string">'id'</span>,<span class="color-source-sql-string">'invoice_id'</span>)
+  <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> hist_id <span class="color-source-sql-keyword">desc</span>,column_pos
+</pre>
+</div>
+
+<div style="height: 25px;"></div>
+<div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
+
+
+
+<a id="table_at_timestamp"></a>
+<p style="font-size:larger;"><b>[schema].[table]_at_timestamp</b>(transaction_start timestamptz, cascade boolean)</p>
+<br>
+Function created a temporary table [schema]_[table]_at_timestamp as copy of the original table at point in time and returns it
+<br>
+<br>
+Parameters:<br>
+<table>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">transaction_timestamp</td><td style="text-align: center; width: 30px;">-</td><td>date-time of transaction completion, default current_setting('pghist.at_timestamp')</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">cascade</td><td style="text-align: center; width: 30px;">-</td><td>process inherited tables (default true)</td></tr>
+</table>
+
+<br>
+Example:<br>
+<div class="div-source-code border-color-div-source-code" style="width: 60%; height: 175px;">
+<pre><span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_at_timestamp(now()-<span class="color-source-sql-keyword">interval</span> <span class="color-source-sql-string">'1 hour'</span>);
+
+<span class="color-source-sql-keyword">do</span> &dollar;&dollar;
+<span class="color-source-sql-keyword">begin</span>
+  perform set_config(<span class="color-source-sql-string">'pghist.at_timestamp'</span>, <span class="color-source-sql-string">'2024-04-06 10:00:00'</span>, <span class="color-source-sql-keyword">true</span>);    
+  perform example.invoice_at_timestamp();    
+  perform example.customer_at_timestamp();
+<span class="color-source-sql-keyword">end</span>; 
+&dollar;&dollar;;
+</pre>
+</div>
+
+<div style="height: 25px;"></div>
+<div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
+
+
+
+<a id="hist_disable"></a>
+<p style="font-size:larger;"><b>pghist.hist_disable</b>(schema name, table_name name)</p>
+<br>
+Procedure disable keeping history of changes for table, delete the necessary objects
+<br>
+<br>
+Parameters:<br>
+<table>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">schema</td><td style="text-align: center; width: 30px;">-</td><td>table schema (optional)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">table_name</td><td style="text-align: center; width: 30px;">-</td><td>table name</td></tr>
+</table>
+
+<br>
+Example:<br>
+<div class="div-source-code border-color-div-source-code" style="width: 60%; height: 70px;">
+<pre><span class="color-source-sql-keyword">call</span> pghist.hist_disable(<span class="color-source-sql-string">'document'</span>);
+<span class="color-source-sql-keyword">call</span> pghist.hist_disable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>);
+</pre>
+</div>
+
+
+<div style="height: 25px;"></div>
+<div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
+
+
+
+<a id="hist_expression_desc"></a>
+<p style="font-size:larger;"><b>SQL expressions of descriptions</b></p>
+<br>
+<b>pghist.hist_expression_row_desc</b>(schema name, table_name name, expression varchar)<br>
+<b>pghist.hist_expression_value_desc</b>(schema name, table_name name, column_name name, expression varchar)
+<br>
+<br>
+The procedures set expression to describe row or value of field.<br>
+Variable <em>$1</em> with row/field value is available in expression 
+<br>
+<br>
+<br>
+<b>pghist.hist_expression_row_desc_current</b>(schema name, table_name name)<br>
+<b>pghist.hist_expression_value_desc_current</b>(schema name, table_name name, column_name name)
+<br>
+<br>
+Functions return current expression to describe row or value of field
+<br>
+<br>
+<br>
+<b>pghist.hist_expression_row_desc_default</b>(schema name, table_name name)<br>
+<b>pghist.hist_expression_value_desc_default</b>(schema name, table_name name, column_name name)
+<br>
+<br>
+Functions return default expression to describe row or value of field.<br>
+For row, table comment with the primary key is returned.<br>
+For column that is foreign key, first text field of foreigned table is returned.
+<br>
+<br>
+<br>
+Parameters:<br>
+<table>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">schema</td><td style="text-align: center; width: 30px;">-</td><td>table schema</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">table</td><td style="text-align: center; width: 30px;">-</td><td>table name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_name</td><td style="text-align: center; width: 30px;">-</td><td>column name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">expression</td><td style="text-align: center; width: 30px;">-</td><td>expression, null discards the saved description</td></tr>
+</table>
+
+<br>
+Examples:<br>
+<div class="div-source-code border-color-div-source-code" style="height: 130px;">
+<pre><span class="color-source-sql-keyword">call</span> pghist.hist_expression_row_desc(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>, <span class="color-source-sql-string">''</span><span class="color-source-sql-string">'Invoice'</span><span class="color-source-sql-string">''</span>);   
+<span class="color-source-sql-keyword">call</span> pghist.hist_expression_row_desc(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, &dollar;&dollar; <span class="color-source-sql-string">'Row #'</span>||&dollar;1.id||<span class="color-source-sql-string">' / '</span>||(<span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">name</span> <span class="color-source-sql-keyword">from</span> example.product <span class="color-source-sql-keyword">where</span> id=&dollar;1.product_id) &dollar;&dollar;);
+<span class="color-source-sql-keyword">call</span> pghist.hist_expression_value_desc(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, <span class="color-source-sql-string">'color'</span>, &dollar;&dollar; <span class="color-source-sql-keyword">case</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'R'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Red'</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'B'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Blue'</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'G'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Green'</span> <span class="color-source-sql-keyword">else</span> &dollar;1 <span class="color-source-sql-keyword">end</span> &dollar;&dollar;);
+
+<span class="color-source-sql-keyword">select</span> pghist.hist_expression_row_desc_current(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>);
+<span class="color-source-sql-keyword">select</span> pghist.hist_expression_value_desc_default(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, <span class="color-source-sql-string">'color'</span>);
+</pre>
+</div>
+
+<div style="height: 25px;"></div>
+<div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
+
+
+
+<a id="hist_custom_funcs"></a>
+<p style="font-size:larger;"><b>Customization functions pghist.hist_custom_[column]</b></p>
+<br>
+<table>
+  <tr><td style="white-space: nowrap;"><b>pghist.hist_custom_operation_name()</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">operation name</td></tr>
+  <tr><td style="white-space: nowrap;"><b>pghist.hist_custom_db_user_name(db_user)</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">database user name</td></tr>
+  <tr><td style="white-space: nowrap;"><b>pghist.hist_custom_app_user()</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">application user</td></tr>
+  <tr><td style="white-space: nowrap;"><b>pghist.hist_custom_app_user_name(app_user)</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">application user name</td></tr>
+  <tr><td style="white-space: nowrap;"><b>pghist.hist_custom_app_client_addr()</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">client application IP address</td></tr>
+  <tr><td style="white-space: nowrap;"><b>pghist.hist_custom_app_client_hostname()</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">client application host name</td></tr>
+</table>
+
+<br>
+Functions for customize columns for a specific application, сreated on initial installation of pghist and are not overwritten on update.
+Recommended to edit in a SQL manager (for example, pgAdmin or DBeaver)
+<br>
+<br>
+
+Examples:<br>
+<div class="div-source-code border-color-div-source-code" style="height: 175px;">
+<pre><span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> pghist.hist_custom_db_user_name(db_user <span class="color-source-sql-keyword">name</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">varchar</span> <span class="color-source-sql-keyword">language</span> plpgsql <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
+<span class="color-source-sql-keyword">begin</span> 
+  return (<span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">name</span> <span class="color-source-sql-keyword">from</span> app.users <span class="color-source-sql-keyword">where</span> login=db_user);
+<span class="color-source-sql-keyword">end</span>; &dollar;&dollar;;      
+
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> pghist.hist_custom_app_client_addr() <span class="color-source-sql-keyword">returns</span> inet <span class="color-source-sql-keyword">language</span> plpgsql <span class="color-source-sql-keyword">as</span> &dollar;&dollar; 
+<span class="color-source-sql-keyword">begin</span> 
+  return (<span class="color-source-sql-keyword">select</span> ip_address <span class="color-source-sql-keyword">from</span> app.<span class="color-source-sql-keyword">session</span> <span class="color-source-sql-keyword">where</span> id=current_setting(<span class="color-source-sql-string">'app.session_id'</span>, <span class="color-source-sql-keyword">true</span>));
+<span class="color-source-sql-keyword">end</span>; &dollar;&dollar;;
+</pre>
+</div>
+
+
+<div style="height: 25px;"></div>
+<div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
+
+
+<a id="hist_table"></a>
+<p style="font-size:larger;"><b>History table pghist.hist_[schema]_[table]</b></p>
+<br>
+History table is created in addition to the main table,
+developer (owner of main table) has access through the view <a href="#view_hist">[schema].[table]_hist</a>
+<br>
+<br>
+Столбцы:<br>
+<table>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_statement_id</td><td style="text-align: center; width: 30px;">-</td><td>SQL statement ID referenced on pghist.hist_statement table</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_row_num</td><td style="text-align: center; width: 30px;">-</td><td>row number in dataset that modified SQL statement</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_update_columns</td><td style="text-align: center; width: 30px;">-</td><td>changed columns for UPDATE operation</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[primary key column(s)]</td><td style="text-align: center; width: 30px;">-</td><td>primary key value (can be several)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[column(s) of foreign key on master table]</td><td style="text-align: center; width: 30px;">-</td><td>foreign key value on master table (optional, can be several)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[column...]_old</td><td style="text-align: center; width: 30px;">-</td><td>old value for each column of table [schema].[table]</td></tr>
+</table>
+
+<br>
+Example:<br>
+<div class="div-source-code border-color-div-source-code" style="height: 130px;">
+<pre><span class="color-source-sql-keyword">select</span> *
+  <span class="color-source-sql-keyword">from</span> pghist.hist_example_invoice h
+  <span class="color-source-sql-keyword">join</span> pghist.hist_statement s <span class="color-source-sql-keyword">on</span> s.id=h.hist_statement_id
+  <span class="color-source-sql-keyword">join</span> pghist.hist_query q <span class="color-source-sql-keyword">on</span> q.hash=s.query_hash
+  <span class="color-source-sql-keyword">where</span> q.<span class="color-source-sql-keyword">text</span> <span class="color-source-sql-keyword">like</span> <span class="color-source-sql-string">'do%begin%'</span>
+</pre>
+</div>
+
+<div style="height: 25px;"></div>
+<div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
+
+
+<a id="common_tables"></a>
+<p style="font-size:larger;"><b>Common tables</b></p>
+<br>
+<table>
+  <tr><td style="white-space: nowrap;"><b>pghist.hist_transaction</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">transactions</td></tr>
+  <tr><td style="white-space: nowrap;"><b>pghist.hist_query</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">SQL queries</td></tr>
+  <tr><td style="white-space: nowrap;"><b>pghist.hist_statement</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">SQL statements</td></tr>
+</table>
+
+
+<br>
+On installation created tables that store common data:
+transaction date-time and SQL expressions, operation, SQL query, user, session, etc.
+<br>
+History table <a href="#hist_table">pghist.hist_[schema]_[table]</a> by field <em>statement_id</em> refers to <em>pghist.hist_statement</em>, which in, in turn, refers to <em>pghist.hist_transaction</em> and <em>pghist.hist_query</em>.
+By default, developers (owners of main tables) do not have access to common tables; if necessary, privilegies are granted manually
+<br>
+<br>
+Example:<br>
+<div class="div-source-code border-color-div-source-code" style="height: 130px;">
+<pre><span class="color-source-sql-keyword">select</span> *
+  <span class="color-source-sql-keyword">from</span> pghist.hist_statement s
+  <span class="color-source-sql-keyword">join</span> pghist.hist_transaction t <span class="color-source-sql-keyword">on</span> t.id=s.transaction_id
+  <span class="color-source-sql-keyword">join</span> pghist.hist_query q <span class="color-source-sql-keyword">on</span> q.hash=s.query_hash
+  <span class="color-source-sql-keyword">where</span> t.timestamp_commit <span class="color-source-sql-keyword">between</span> <span class="color-source-sql-string">'2024-04-06 10:00:00'</span> <span class="color-source-sql-keyword">and</span> <span class="color-source-sql-string">'2024-04-06 11:00:00'</span>;
+</pre>
+</div>
+
+<div style="height: 25px;"></div>
+<div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
+
+
+
+<a id="pghist_version"></a>
+<p style="font-size:larger;"><b>pghist.pghist_version</b>()</p>
+<br>
+The function returns tool version
+<br>
+
+<div style="height: 25px;"></div>
+<div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
+
+
+
+<a id="hist_sql_log"></a>
+<p style="font-size:larger;"><b>pghist.hist_sql_log</b></p>
+<br>
+All executed commands logging in table pghist.hist_sql_log
+<br>
+<br>
+Examples:<br>
+<div class="div-source-code border-color-div-source-code" style="height: 140px;">
+<pre><span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> pghist.hist_sql_log <span class="color-source-sql-keyword">where</span> <span class="color-source-sql-keyword">schema</span>=<span class="color-source-sql-string">'example'</span> <span class="color-source-sql-keyword">and</span> table_name=<span class="color-source-sql-string">'document'</span> <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> id;
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> pghist.hist_sql_log l
+  <span class="color-source-sql-keyword">join</span> pghist.hist_transaction t <span class="color-source-sql-keyword">on</span> t.id=l.transaction_id
+  <span class="color-source-sql-keyword">where</span> <span class="color-source-sql-keyword">schema</span>=<span class="color-source-sql-string">'example'</span> <span class="color-source-sql-keyword">and</span> table_name=<span class="color-source-sql-string">'document'</span>
+  <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1 <span class="color-source-sql-keyword">desc</span>;
+</pre>
+</div>
+
+
+
+  </div>
+
+</div>
+
+</body>
+</html>
