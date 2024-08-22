@@ -689,37 +689,58 @@ Examples:<br>
 
 
 <a id="hist_custom_funcs"></a>
-<p style="font-size:larger;"><b>Customization functions pghist.hist_custom_[column]</b></p>
+<p style="font-size:larger;"><b>Customization functions</b></p>
+<br>
+To customize and localize fields in a specific application, can be define custom functions.<br>
+Recommended to use the default function in SQL manager (such as pgAdmin or DBeaver),
+override it and save in application schema as different name.<br>
+<br>
+Columns available for customization:
 <br>
 <table>
-  <tr><td style="white-space: nowrap;"><b>pghist.hist_custom_operation_name()</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">operation name</td></tr>
-  <tr><td style="white-space: nowrap;"><b>pghist.hist_custom_db_user_name(db_user)</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">database user name</td></tr>
-  <tr><td style="white-space: nowrap;"><b>pghist.hist_custom_app_user()</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">application user</td></tr>
-  <tr><td style="white-space: nowrap;"><b>pghist.hist_custom_app_user_name(app_user)</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">application user name</td></tr>
-  <tr><td style="white-space: nowrap;"><b>pghist.hist_custom_app_client_addr()</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">client application IP address</td></tr>
-  <tr><td style="white-space: nowrap;"><b>pghist.hist_custom_app_client_hostname()</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">client application host name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">operation_name</td><td style="text-align: center; width: 30px;">-</td><td>operation name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">db_user_name</td><td style="text-align: center; width: 30px;">-</td><td>database user name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">app_user</td><td style="text-align: center; width: 30px;">-</td><td>application user</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">app_user_name</td><td style="text-align: center; width: 30px;">-</td><td>application user name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">app_client_addr</td><td style="text-align: center; width: 30px;">-</td><td>client application IP address</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">app_client_hostname</td><td style="text-align: center; width: 30px;">-</td><td>client application host name</td></tr>
 </table>
 
 <br>
-Functions for customize columns for a specific application, сreated on initial installation of pghist and are not overwritten on update.
-Recommended to edit in a SQL manager (for example, pgAdmin or DBeaver)
-<br>
-<br>
 
-Examples:<br>
+<p style="font-size:larger;"><b>pghist.hist_column_custom_function</b>(column_name name, custom_function name)<p>
+The procedure sets function to get column value
+<br>
+<br>
+Parameters:<br>
+<table>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_name</td><td style="text-align: center; width: 30px;">-</td><td>column name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">custom_function</td><td style="text-align: center; width: 30px;">-</td><td>function name without parameters</td></tr>
+</table>
+
+<br>
+<p style="font-size:larger;"><b>pghist.hist_column_custom_function_current</b>(column_name name)<p>
+The function returns current function to get column value
+<br>
+<br>
+Parameter:<br>
+<table>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_name</td><td style="text-align: center; width: 30px;">-</td><td>column name</td></tr>
+</table>
+
+<br>
+Example:<br>
 <div class="div-source-code border-color-div-source-code" style="height: 175px;">
-<pre><span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> pghist.hist_custom_db_user_name(db_user <span class="color-source-sql-keyword">name</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">varchar</span> <span class="color-source-sql-keyword">language</span> plpgsql <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
-<span class="color-source-sql-keyword">begin</span> 
-  return (<span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">name</span> <span class="color-source-sql-keyword">from</span> app.users <span class="color-source-sql-keyword">where</span> login=db_user);
-<span class="color-source-sql-keyword">end</span>; &dollar;&dollar;;      
+<pre><span class="color-source-sql-keyword">select</span> pghist.hist_column_custom_function_current(<span class="color-source-sql-string">'db_user_name'</span>);
 
-<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> pghist.hist_custom_app_client_addr() <span class="color-source-sql-keyword">returns</span> inet <span class="color-source-sql-keyword">language</span> plpgsql <span class="color-source-sql-keyword">as</span> &dollar;&dollar; 
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> myapp.user_name(db_user <span class="color-source-sql-keyword">name</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">varchar</span> <span class="color-source-sql-keyword">language</span> plpgsql <span class="color-source-sql-keyword">as</span> &dollar;&dollar; 
 <span class="color-source-sql-keyword">begin</span> 
-  return (<span class="color-source-sql-keyword">select</span> ip_address <span class="color-source-sql-keyword">from</span> app.<span class="color-source-sql-keyword">session</span> <span class="color-source-sql-keyword">where</span> id=current_setting(<span class="color-source-sql-string">'app.session_id'</span>, <span class="color-source-sql-keyword">true</span>));
+  return (<span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">name</span> <span class="color-source-sql-keyword">from</span> myapp.users <span class="color-source-sql-keyword">where</span> login=db_user);                                        
 <span class="color-source-sql-keyword">end</span>; &dollar;&dollar;;
+
+<span class="color-source-sql-keyword">call</span> pghist.hist_column_custom_function(<span class="color-source-sql-string">'db_user_name'</span>, <span class="color-source-sql-string">'myapp.user_name'</span>);
 </pre>
 </div>
-
 
 <div style="height: 25px;"></div>
 <div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>

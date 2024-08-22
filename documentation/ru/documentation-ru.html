@@ -1,5 +1,3 @@
-
-</pghtml-var>
 <!DOCTYPE html>
 <html lang="ru">
 
@@ -695,35 +693,55 @@ a, a:link, a:active, a:visited {
 
 
 <a id="hist_custom_funcs"></a>
-<p style="font-size:larger;"><b>Функции кастомизации pghist.hist_custom_[column]</b></p>
+<p style="font-size:larger;"><b>Функции кастомизации</b></p>
+<br>
+Для кастомизации и локализации полей конкретного приложения можно определить собственные функции. <br>
+Рекомендуется в SQL-менеджере (например, pgAdmin или DBeaver) взять за основу функцию по умолчанию,
+переопределить ее и сохранить в схеме приложения под другим именем.<br>
+<br>
+Столбцы, доступные для переопределения:
 <br>
 <table>
-  <tr><td style="white-space: nowrap;"><b>pghist.hist_custom_operation_name()</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">наименование операции</td></tr>
-  <tr><td style="white-space: nowrap;"><b>pghist.hist_custom_db_user_name(db_user)</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">имя пользователя базы данных</td></tr>
-  <tr><td style="white-space: nowrap;"><b>pghist.hist_custom_app_user()</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">пользователь приложения</td></tr>
-  <tr><td style="white-space: nowrap;"><b>pghist.hist_custom_app_user_name(app_user)</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">имя пользователя приложения</td></tr>
-  <tr><td style="white-space: nowrap;"><b>pghist.hist_custom_app_client_addr()</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">IP адрес клиентского приложения</td></tr>
-  <tr><td style="white-space: nowrap;"><b>pghist.hist_custom_app_client_hostname()</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">Имя хоста(компьютера) клиентского приложения</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">operation_name</td><td style="text-align: center; width: 30px;">-</td><td>наименование операции</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">db_user_name</td><td style="text-align: center; width: 30px;">-</td><td>имя пользователя базы данных</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">app_user</td><td style="text-align: center; width: 30px;">-</td><td>пользователь приложения</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">app_user_name</td><td style="text-align: center; width: 30px;">-</td><td>имя пользователя приложения</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">app_client_addr</td><td style="text-align: center; width: 30px;">-</td><td>IP адрес клиентского приложения</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">app_client_hostname</td><td style="text-align: center; width: 30px;">-</td><td>Имя хоста(компьютера) клиентского приложения</td></tr>
 </table>
 
 <br>
-Функции кастомизации столбцов, представляют собой "заглушки" для переопределенния под конкретное приложение.<br>
-Создаются при первичной установке pghist и при обновлении не перезаписываются.<br>
-Рекомендуется редактировать в SQL-менеджере (например, pgAdmin или DBeaver)
+<p style="font-size:larger;"><b>pghist.hist_column_custom_function</b>(column_name name, custom_function name)<p>
+Процедура устанавливает функцию для получения значения поля
 <br>
 <br>
+Параметры:<br>
+<table>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_name</td><td style="text-align: center; width: 30px;">-</td><td>имя столбца</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">custom_function</td><td style="text-align: center; width: 30px;">-</td><td>имя функции без параметров</td></tr>
+</table>
 
-Примеры переопределения:<br>
+<br>
+<p style="font-size:larger;"><b>pghist.hist_column_custom_function_current</b>(column_name name)<p>
+Функция возвращает текущую функцию для получения значения поля
+<br>
+<br>
+Параметр:<br>
+<table>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_name</td><td style="text-align: center; width: 30px;">-</td><td>имя столбца</td></tr>
+</table>
+
+<br>
+Пример:<br>
 <div class="div-source-code border-color-div-source-code" style="height: 175px;">
-<pre><span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> pghist.hist_custom_db_user_name(db_user <span class="color-source-sql-keyword">name</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">varchar</span> <span class="color-source-sql-keyword">language</span> plpgsql <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
-<span class="color-source-sql-keyword">begin</span> 
-  return (<span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">name</span> <span class="color-source-sql-keyword">from</span> app.users <span class="color-source-sql-keyword">where</span> login=db_user);
-<span class="color-source-sql-keyword">end</span>; &dollar;&dollar;;      
+<pre><span class="color-source-sql-keyword">select</span> pghist.hist_column_custom_function_current(<span class="color-source-sql-string">'db_user_name'</span>);
 
-<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> pghist.hist_custom_app_client_addr() <span class="color-source-sql-keyword">returns</span> inet <span class="color-source-sql-keyword">language</span> plpgsql <span class="color-source-sql-keyword">as</span> &dollar;&dollar; 
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> myapp.user_name(db_user <span class="color-source-sql-keyword">name</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">varchar</span> <span class="color-source-sql-keyword">language</span> plpgsql <span class="color-source-sql-keyword">as</span> &dollar;&dollar; 
 <span class="color-source-sql-keyword">begin</span> 
-  return (<span class="color-source-sql-keyword">select</span> ip_address <span class="color-source-sql-keyword">from</span> app.<span class="color-source-sql-keyword">session</span> <span class="color-source-sql-keyword">where</span> id=current_setting(<span class="color-source-sql-string">'app.session_id'</span>, <span class="color-source-sql-keyword">true</span>));
+  return (<span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">name</span> <span class="color-source-sql-keyword">from</span> myapp.users <span class="color-source-sql-keyword">where</span> login=db_user);                                        
 <span class="color-source-sql-keyword">end</span>; &dollar;&dollar;;
+
+<span class="color-source-sql-keyword">call</span> pghist.hist_column_custom_function(<span class="color-source-sql-string">'db_user_name'</span>, <span class="color-source-sql-string">'myapp.user_name'</span>);
 </pre>
 </div>
 
@@ -822,6 +840,7 @@ a, a:link, a:active, a:visited {
   <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1 <span class="color-source-sql-keyword">desc</span>;
 </pre>
 </div>
+
 
 
   </div>

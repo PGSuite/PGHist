@@ -19,7 +19,7 @@ create table if not exists pghist.hist_transaction(
   app_user name,
   app_client_addr inet,
   app_client_hostname varchar  
-);
+) with (fillfactor=90);
 create sequence if not exists pghist.hist_transaction_seq as bigint increment 2;
 
 create table if not exists pghist.hist_query(
@@ -71,23 +71,6 @@ do $$ begin
     );  
   end if;
 end $$;
-
-create or replace function pghist.hist_transaction_id() returns bigint language plpgsql as $$
-declare
-  v_id_text varchar;
-  v_id bigint;
-begin
-  v_id_text := current_setting('pghist.transaction_id', true);
-  if v_id_text!='' then
-    return v_id_text::bigint;
-  end if; 
-  v_id := reverse(nextval('pghist.hist_transaction_seq')::varchar);
-  insert into pghist.hist_transaction(id, xid, timestamp_start, application_name, backend_pid, backend_start, db_user, db_client_addr, db_client_hostname, app_user, app_client_addr, app_client_hostname)
-    select v_id, txid_current(), xact_start, application_name, pg_backend_pid(), backend_start, usename, client_addr, client_hostname, pghist.hist_custom_app_user(), pghist.hist_custom_app_client_addr(), pghist.hist_custom_app_client_hostname()
-    from pg_stat_activity p where pid = pg_backend_pid();
-  perform set_config('pghist.transaction_id', v_id::varchar, true);
-  return v_id;
-end; $$;
 
 create or replace function pghist.hist_transaction_fn_commit() returns trigger language plpgsql as $$
 begin
@@ -284,6 +267,7 @@ declare
   --
   v_hist_schema name;  
   v_hist_table_name name;
+  v_hist_table_exists boolean;
   v_hist_table_oid oid;
   --
   v_trigger_iud_function_name name;
@@ -334,8 +318,8 @@ begin
     ) c
     where pghist.hist_exists(child_schema,child_table_name);
   --
-  select oid into v_hist_table_oid from pg_class where relnamespace::regnamespace::name=v_hist_schema and relname=v_hist_table_name;
-  if v_hist_table_oid is null then
+  v_hist_table_exists := exists (select from pg_class where relnamespace::regnamespace::name=v_hist_schema and relname=v_hist_table_name);
+  if not v_hist_table_exists then
     v_columns_immutable := v_columns_pkey;
     if master_table_schema is not null and master_table_name is not null then
       select (
@@ -383,6 +367,7 @@ begin
     call pghist.hist_execute_sql(v_schema, v_table_name, 'grant select on '||v_hist_schema||'.hist_transaction,'||v_hist_schema||'.'||v_hist_table_name||' to '||v_table_owner);  
     v_hist_table_oid := (v_hist_schema||'.'||v_hist_table_name)::regclass::oid;
   else
+    v_hist_table_oid := (v_hist_schema||'.'||v_hist_table_name)::regclass::oid;
     v_columns_immutable := col_description(v_hist_table_oid, 3);
     for v_rec in
 	  select attname column_name
@@ -474,19 +459,6 @@ begin
     '$func$';   
   call pghist.hist_execute_sql(v_schema, v_table_name, v_sql);
   call pghist.hist_execute_sql(v_schema, v_table_name, 'grant execute on function '||v_hist_schema||'.'||v_trigger_iud_function_name||' to '||v_table_owner); 
-  foreach v_operation in array array['insert','update','delete'] loop
-    if not exists (select from pg_trigger where tgrelid=v_table_oid and tgname=v_trigger_iud_prefix||v_operation) then
-      v_sql :=
-        'create trigger '||v_trigger_iud_prefix||v_operation||
-        '  after '||v_operation||' on '||v_schema||'.'||v_table_name||
-        '  referencing '||
-        '     '||case when v_operation in ('insert','update') then 'new table as rows_new' else '' end||
-        '     '||case when v_operation in ('update','delete') then 'old table as rows_old' else '' end||
-        '  for each statement '||
-        '  execute procedure '||v_hist_schema||'.'||v_trigger_iud_function_name||'();';        
-      call pghist.hist_execute_sql(v_schema, v_table_name, v_sql);
-    end if;  
-  end loop;
   --
   v_sql := 
    'create or replace function '||v_hist_schema||'.'||v_trigger_truncate_function_name||'() returns trigger language plpgsql security definer as $func$'||v_newline||
@@ -500,8 +472,23 @@ begin
     'end;'||v_newline||
     '$func$';
   call pghist.hist_execute_sql(v_schema, v_table_name, v_sql);
-  if not exists (select 1 from pg_trigger where tgrelid=v_table_oid and tgname=v_trigger_truncate_name) then
-    call pghist.hist_execute_sql(v_schema, v_table_name, 'create trigger '||v_trigger_truncate_name||' before truncate on '||v_schema||'.'||v_table_name||' execute procedure '||v_hist_schema||'.'||v_trigger_truncate_function_name||'();');
+  if not v_hist_table_exists then
+    foreach v_operation in array array['insert','update','delete'] loop
+      v_sql :=
+        'create trigger '||v_trigger_iud_prefix||v_operation||
+        '  after '||v_operation||' on '||v_schema||'.'||v_table_name||
+        '  referencing '||
+        '     '||case when v_operation in ('insert','update') then 'new table as rows_new' else '' end||
+        '     '||case when v_operation in ('update','delete') then 'old table as rows_old' else '' end||
+        '  for each statement '||
+        '  execute procedure '||v_hist_schema||'.'||v_trigger_iud_function_name||'();';        
+      call pghist.hist_execute_sql(v_schema, v_table_name, v_sql);
+    end loop;   
+    v_sql :=
+      'create trigger '||v_trigger_truncate_name||
+      '  before truncate on '||v_schema||'.'||v_table_name||
+      '  execute procedure '||v_hist_schema||'.'||v_trigger_truncate_function_name||'();';    
+    call pghist.hist_execute_sql(v_schema, v_table_name,  v_sql);
   end if;
   --
   v_sql := 
@@ -553,11 +540,11 @@ begin
     '    v_change.row_num        := v_hist.hist_row_num;'||v_newline||    
     '    v_change.timestamp      := v_hist.hist_timestamp;'||v_newline||
     '    v_change.operation      := v_hist.hist_operation;'||v_newline||
-    '    v_change.operation_name := '||v_hist_schema||'.hist_custom_operation_name(v_change.operation);'||v_newline||
+    '    v_change.operation_name := '||pghist.hist_column_custom_function_current('operation_name')||'(v_change.operation);'||v_newline||
     '    v_change.db_user        := v_hist.hist_db_user;'||v_newline||
-    '    v_change.db_user_name   := '||v_hist_schema||'.hist_custom_db_user_name(v_change.db_user);'||v_newline||
+    '    v_change.db_user_name   := '||pghist.hist_column_custom_function_current('db_user_name')||'(v_change.db_user);'||v_newline||
     '    v_change.app_user       := v_hist.hist_app_user;'||v_newline||
-    '    v_change.app_user_name  := '||v_hist_schema||'.hist_custom_db_user_name(v_change.app_user);'||v_newline||
+    '    v_change.app_user_name  := '||pghist.hist_column_custom_function_current('app_user_name')||'(v_change.app_user);'||v_newline||
     '    if v_hist.hist_operation in (''HIST_ENABLE'',''INSERT'') then'||v_newline||
     '      v_change.value_old := null; v_change.value_old_desc := null;'||v_newline||
     '      '||v_row_desc_expr||v_newline||
@@ -778,41 +765,75 @@ begin
   );	
 end; $$;
 
-do $block$ begin
-  if to_regproc('pghist.hist_custom_operation_name') is null then
-    create or replace function pghist.hist_custom_operation_name(operation varchar) returns varchar language plpgsql as $$
-    begin 
-      return case
-    	when operation = 'HIST_ENABLE' then 'History start'
-    	when operation = 'INSERT'      then 'Creation'
-    	when operation = 'UPDATE'      then 'Modification'
-    	when operation = 'DELETE'      then 'Deletion'
-    	when operation = 'TRUNCATE'    then 'Cleaning'
-      end;
-    end; $$;      
-  end if;
-  if to_regproc('pghist.hist_custom_db_user_name') is null then
-    create or replace function pghist.hist_custom_db_user_name(db_user name) returns varchar language plpgsql as $$
-    begin 
-      return db_user;
-    end; $$;      
-  end if;
-  if to_regproc('pghist.hist_custom_app_user_name') is null then
-    create or replace function pghist.hist_custom_app_user_name(app_user name) returns varchar language plpgsql as $$
-    begin 
-      return app_user;
-    end; $$;      
-  end if;
-  if to_regproc('pghist.hist_custom_app_user') is null then
-    create or replace function pghist.hist_custom_app_user() returns varchar language plpgsql as $$ begin return current_setting('app.user', true); end; $$;      
-  end if;
-  if to_regproc('pghist.hist_custom_app_client_addr') is null then
-    create or replace function pghist.hist_custom_app_client_addr() returns inet language plpgsql as $$ begin return current_setting('app.client_addr', true)::inet; end; $$;      
-  end if;
-  if to_regproc('pghist.hist_custom_app_client_hostname') is null then
-    create or replace function pghist.hist_custom_app_client_hostname() returns varchar language plpgsql as $$ begin return current_setting('app.client_hostname', true); end; $$;      
-  end if;
-end $block$;
+create or replace function pghist.hist_default_operation_name(operation varchar) returns varchar language plpgsql as $$
+begin 
+  return case
+	when operation = 'HIST_ENABLE' then 'History start'
+	when operation = 'INSERT'      then 'Creation'
+	when operation = 'UPDATE'      then 'Modification'
+	when operation = 'DELETE'      then 'Deletion'
+	when operation = 'TRUNCATE'    then 'Cleaning'
+  end;
+end; $$;
 
+create or replace function pghist.hist_default_db_user_name (db_user name)  returns varchar language plpgsql as $$ begin return db_user;                                        end; $$;
+create or replace function pghist.hist_default_app_user()                   returns varchar language plpgsql as $$ begin return current_setting('app.user', true);              end; $$;      
+create or replace function pghist.hist_default_app_user_name(app_user name) returns varchar language plpgsql as $$ begin return app_user;                                       end; $$;
+create or replace function pghist.hist_default_app_client_addr()            returns inet    language plpgsql as $$ begin return current_setting('app.client_addr', true)::inet; end; $$;      
+create or replace function pghist.hist_default_app_client_hostname()        returns varchar language plpgsql as $$ begin return current_setting('app.client_hostname', true);   end; $$;      
+
+create table if not exists pghist.hist_column_custom_function(
+  column_name name primary key check (column_name in ('operation_name','db_user_name','app_user','app_user_name','app_client_addr','app_client_hostname')),
+  custom_function name not null
+);
+
+create or replace function pghist.hist_column_custom_function_current(column_name name) returns varchar language plpgsql as $$
+declare
+  v_column_name name := column_name;
+begin
+  return coalesce((select custom_function from pghist.hist_column_custom_function f where f.column_name=v_column_name), 'pghist.hist_default_'||v_column_name);
+end; $$;
+
+create or replace procedure pghist.hist_column_custom_function(column_name name, custom_function name) language plpgsql as $$
+declare
+  v_custom_function name := custom_function;
+begin
+  insert into pghist.hist_column_custom_function 
+    values (column_name, v_custom_function)
+    on conflict on constraint hist_column_custom_function_pkey do
+    update set custom_function = v_custom_function;
+  if column_name in ('app_user','app_client_addr','app_client_hostname') then    
+    call pghist.hist_create_function_transaction_id();
+  else 
+    -- TODO enable all
+  end if; 
+end; $$;
+
+create or replace procedure pghist.hist_create_function_transaction_id() security definer language plpgsql as $body$
+begin
+  execute $$
+  
+create or replace function pghist.hist_transaction_id() returns bigint language plpgsql as $func$
+declare
+  v_id_text varchar;
+  v_id bigint;
+begin
+  v_id_text := current_setting('pghist.transaction_id', true);
+  if v_id_text!='' then
+    return v_id_text::bigint;
+  end if; 
+  v_id := reverse(nextval('pghist.hist_transaction_seq')::varchar);
+  insert into pghist.hist_transaction(id, xid, timestamp_start, application_name, backend_pid, backend_start, db_user, db_client_addr, db_client_hostname, app_user, app_client_addr, app_client_hostname)
+    select v_id, txid_current(), xact_start, application_name, pg_backend_pid(), backend_start, usename, client_addr, client_hostname, $$ 
+           || pghist.hist_column_custom_function_current('app_user') || '(), ' || pghist.hist_column_custom_function_current('app_client_addr') || '(), ' || pghist.hist_column_custom_function_current('app_client_hostname') || '()' || $$ 
+    from pg_stat_activity p where pid = pg_backend_pid();
+  perform set_config('pghist.transaction_id', v_id::varchar, true);
+  return v_id;
+end; $func$;
+
+  $$;
+end; $body$;
+
+call pghist.hist_create_function_transaction_id();
 
 
