@@ -451,26 +451,31 @@ a, a:link, a:active, a:visited {
     
 
 <a id="hist_enable"></a>
-<p style="font-size:larger;"><b>pghist.hist_enable</b>(schema name, table_name name, master_table_schema, master_table_name)</p>
+<p style="font-size:larger;"><b>pghist.hist_enable</b>(schema, table_name, master_table_schema, master_table_name, columns_excluded)</p>
 <br>
 Процедура включает ведение истории изменений для указанной таблицы, создает таблицу истории, триггеры и функции получения данных
 <br>
 <br>
 Параметры:
 <table>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">schema</td><td style="text-align: center; width: 30px;">-</td><td>схема таблицы (необязательно)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">schema</td><td style="text-align: center; width: 30px;">-</td><td>схема таблицы (необязательный)</td></tr>
   <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">table_name</td><td style="text-align: center; width: 30px;">-</td><td>имя таблицы</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">master_table_schema</td><td style="text-align: center; width: 30px;">-</td><td>схема мастер-таблицы (необязательно)</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">master_table_name</td><td style="text-align: center; width: 30px;">-</td><td>имя мастер-таблицы (необязательно)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">master_table_schema</td><td style="text-align: center; width: 30px;">-</td><td>схема мастер-таблицы (необязательный)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">master_table_name</td><td style="text-align: center; width: 30px;">-</td><td>имя мастер-таблицы (необязательный)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">columns_excluded</td><td style="text-align: center; width: 30px;">-</td><td>исключенные столбцы (необязательный)</td></tr>
 </table>
 
 
 <br>
 Примеры вызова:<br>
-<div class="div-source-code border-color-div-source-code" style="width: 60%; height: 100px;">
+<div class="div-source-code border-color-div-source-code" style="height: 140px;">
 <pre><span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'document'</span>);
+
 <span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>);
 <span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, <span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>);
+
+<span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'orm'</span>, <span class="color-source-sql-string">'myclass'</span>, columns_excluded =&#62; <span class="color-source-sql-keyword">array</span>[<span class="color-source-sql-string">'inserted_at'</span>,<span class="color-source-sql-string">'updated_at'</span>]);
+
 </pre>
 </div>
 
@@ -506,7 +511,7 @@ a, a:link, a:active, a:visited {
 
 <br>
 Примеры вызова:<br>
-<div class="div-source-code border-color-div-source-code" style="width: 60%; height: 110px;">
+<div class="div-source-code border-color-div-source-code" style="height: 110px;">
 <pre><span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_hist;
 <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_hist <span class="color-source-sql-keyword">where</span> id=2;
 <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_hist <span class="color-source-sql-keyword">where</span> hist_operation=<span class="color-source-sql-string">'DELETE'</span>;
@@ -566,7 +571,7 @@ a, a:link, a:active, a:visited {
 
 <br>
 Примеры вызова:<br>
-<div class="div-source-code border-color-div-source-code" style="width: 60%; height: 110px;">
+<div class="div-source-code border-color-div-source-code" style="height: 110px;">
 <pre><span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_changes();
 <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(<span class="color-source-sql-string">'id=&dollar;1'</span>,2)
   <span class="color-source-sql-keyword">where</span> column_name <span class="color-source-sql-keyword">not</span> <span class="color-source-sql-keyword">in</span> (<span class="color-source-sql-string">'id'</span>,<span class="color-source-sql-string">'invoice_id'</span>)
@@ -593,7 +598,7 @@ a, a:link, a:active, a:visited {
 
 <br>
 Примеры вызова:<br>
-<div class="div-source-code border-color-div-source-code" style="width: 60%; height: 180px;">
+<div class="div-source-code border-color-div-source-code" style="height: 180px;">
 <pre><span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_at_timestamp(now()-<span class="color-source-sql-keyword">interval</span> <span class="color-source-sql-string">'1 hour'</span>);
 
 <span class="color-source-sql-keyword">do</span> &dollar;&dollar;
@@ -625,7 +630,7 @@ a, a:link, a:active, a:visited {
 
 <br>
 Примеры вызова:<br>
-<div class="div-source-code border-color-div-source-code" style="width: 60%; height: 70px;">
+<div class="div-source-code border-color-div-source-code" style="height: 70px;">
 <pre><span class="color-source-sql-keyword">call</span> pghist.hist_disable(<span class="color-source-sql-string">'document'</span>);
 <span class="color-source-sql-keyword">call</span> pghist.hist_disable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>);
 </pre>
@@ -750,7 +755,7 @@ a, a:link, a:active, a:visited {
 
 
 <a id="hist_table"></a>
-<p style="font-size:larger;"><b>Таблица истории pghist.hist_[schema]_[table]</b></p>
+<p style="font-size:larger;"><b>Таблица истории pghist.hist_data$[schema]_[table]</b></p>
 <br>
 При включении истории дополнительно к основной таблице создается таблица истории,
 разработчику (владельцу основной таблицы) доступна через представление <a href="#view_hist">[schema].[table]_hist</a>
@@ -770,7 +775,7 @@ a, a:link, a:active, a:visited {
 Пример использования:<br>
 <div class="div-source-code border-color-div-source-code" style="height: 130px;">
 <pre><span class="color-source-sql-keyword">select</span> *
-  <span class="color-source-sql-keyword">from</span> pghist.hist_example_invoice h
+  <span class="color-source-sql-keyword">from</span> pghist.hist_data&dollar;example_invoice h
   <span class="color-source-sql-keyword">join</span> pghist.hist_statement s <span class="color-source-sql-keyword">on</span> s.id=h.hist_statement_id
   <span class="color-source-sql-keyword">join</span> pghist.hist_query q <span class="color-source-sql-keyword">on</span> q.hash=s.query_hash
   <span class="color-source-sql-keyword">where</span> q.<span class="color-source-sql-keyword">text</span> <span class="color-source-sql-keyword">like</span> <span class="color-source-sql-string">'do%begin%'</span>
@@ -788,24 +793,34 @@ a, a:link, a:active, a:visited {
   <tr><td style="white-space: nowrap;"><b>pghist.hist_transaction</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">транзакции</td></tr>
   <tr><td style="white-space: nowrap;"><b>pghist.hist_query</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">SQL-запросы</td></tr>
   <tr><td style="white-space: nowrap;"><b>pghist.hist_statement</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">SQL-выражения</td></tr>
+  <tr><td style="white-space: nowrap;"><b>pghist.hist_table</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">таблицы с историей</td></tr>
+  <tr><td style="white-space: nowrap;"><b>pghist.hist_table_column</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">столбцы таблиц с историей</td></tr>
+  <tr><td style="white-space: nowrap;"><b>pghist.hist_column_custom_function</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">кастомизированные функции столбцов</td></tr>
 </table>
 
 
 <br>
-При установке создаются таблицы, которые хранят общую информацию по изменениям:
-дата-время транзакции и SQL-выражения, операция, SQL-запрос, пользователь, сессия и т.д. 
-<br>
-Таблица истории <a href="#hist_table">pghist.hist_[schema]_[table]</a> по полю <em>statement_id</em> ссылается на <em>pghist.hist_statement</em>, которая в свою очередь ссылается на <em>pghist.hist_transaction</em> и <em>pghist.hist_query</em>.
+При установке создаются таблицы, которые хранят общую информацию по изменениям
+(дата-время транзакции и SQL-выражения, операция, SQL-запрос, пользователь, сессия и т.д.),
+и таблицы с настройками.
+Изменение общих таблиц осуществляется через хранимые процедуры, допускается только чтение. 
 По умолчанию разработчикам (владельцам основных таблицы) общие таблицы недоступны, при необходимости доступ выдается вручную.
 <br>
 <br>
+Таблица истории <a href="#hist_table">pghist.hist_data$[schema]_[table]</a> по полю <em>statement_id</em> ссылается на <em>pghist.hist_statement</em>, которая в свою очередь ссылается на <em>pghist.hist_transaction</em> и <em>pghist.hist_query</em>.
+<br>
+<br>
 Пример использования:<br>
-<div class="div-source-code border-color-div-source-code" style="height: 130px;">
+<div class="div-source-code border-color-div-source-code" style="height: 190px;">
 <pre><span class="color-source-sql-keyword">select</span> *
   <span class="color-source-sql-keyword">from</span> pghist.hist_statement s
   <span class="color-source-sql-keyword">join</span> pghist.hist_transaction t <span class="color-source-sql-keyword">on</span> t.id=s.transaction_id
   <span class="color-source-sql-keyword">join</span> pghist.hist_query q <span class="color-source-sql-keyword">on</span> q.hash=s.query_hash
   <span class="color-source-sql-keyword">where</span> t.timestamp_commit <span class="color-source-sql-keyword">between</span> <span class="color-source-sql-string">'2024-04-06 10:00:00'</span> <span class="color-source-sql-keyword">and</span> <span class="color-source-sql-string">'2024-04-06 11:00:00'</span>;
+
+<span class="color-source-sql-keyword">select</span> *
+  <span class="color-source-sql-keyword">from</span> pghist.hist_table ht
+  <span class="color-source-sql-keyword">left</span> <span class="color-source-sql-keyword">join</span> pghist.hist_table_column htc <span class="color-source-sql-keyword">on</span> htc.<span class="color-source-sql-keyword">schema</span>=ht.<span class="color-source-sql-keyword">schema</span> <span class="color-source-sql-keyword">and</span> htc.table_name=ht.<span class="color-source-sql-keyword">name</span>;
 </pre>
 </div>
 

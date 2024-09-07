@@ -6,7 +6,7 @@ create table example(
   date date
 );
 
--- Endable keeping history
+-- Enable keeping history
 call pghist.hist_enable('example');
 
 -- Change table

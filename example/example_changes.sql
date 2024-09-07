@@ -95,10 +95,12 @@ call pghist.hist_expression_row_desc('example', 'invoice_product', $$ 'Row #'||$
 call pghist.hist_expression_value_desc('example', 'invoice_product', 'color', $$ case when $1='R' then 'Red' when $1='B' then 'Blue' when $1='G' then 'Green' else $1 end $$);
 
 -- Replace function for column db_user_name
-create or replace function pghist.hist_custom_db_user_name(db_user name) returns varchar language plpgsql as $$
+create or replace function example.db_user_name(db_user name) returns varchar language plpgsql as $$ 
 begin 
-  return '['||db_user||']';
-end; $$;      
+  return '['||db_user||']';                                        
+end; $$;
+
+call pghist.hist_column_custom_function('db_user_name', 'example.db_user_name');
 
 -- Select changes for user interface 
 select * from example.invoice_changes_ui(12);

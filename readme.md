@@ -8,8 +8,8 @@ It is possible to override the operation name and username functions.
 
 ### Design and working principle ###
 
-PGHIST is a schema with procedures and common tables: transactions, SQL expressions.
-When history is enabled (procedure pghist.hist_enable), for specified table created additional table, triggers for insert,update,delete,truncate, stored procedures and view for obtaining data.
+PGHIST is a schema with procedures and common tables: transactions, SQL expressions etc.
+When history is enabled (procedure `pghist.hist_enable`), for specified table created additional table, triggers for insert,update,delete,truncate, stored procedures and view for obtaining data.
 When a table is changed, triggers are fired that modify the history table.
 There are also event triggers that rebuild the history table and recreate the stored procedures.
 
@@ -49,7 +49,7 @@ create table example(
   date date
 );
 
--- Endable keeping history
+-- Enable keeping history
 call pghist.hist_enable('example');
 
 -- Change table

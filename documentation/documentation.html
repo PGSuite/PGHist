@@ -460,14 +460,19 @@ Parameters:<br>
   <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">table_name</td><td style="text-align: center; width: 30px;">-</td><td>table name</td></tr>
   <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">master_table_schema</td><td style="text-align: center; width: 30px;">-</td><td>master table schema (optional)</td></tr>
   <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">master_table_name</td><td style="text-align: center; width: 30px;">-</td><td>master table name (optional)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">columns_excluded</td><td style="text-align: center; width: 30px;">-</td><td>excluded columns (optional)</td></tr>
 </table>
 
 <br>
 Examples:<br>
-<div class="div-source-code border-color-div-source-code" style="width: 60%; height: 100px;">
+<div class="div-source-code border-color-div-source-code" style="height: 140px;">
 <pre><span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'document'</span>);
+
 <span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>);
 <span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, <span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>);
+
+<span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'orm'</span>, <span class="color-source-sql-string">'myclass'</span>, columns_excluded =&#62; <span class="color-source-sql-keyword">array</span>[<span class="color-source-sql-string">'inserted_at'</span>,<span class="color-source-sql-string">'updated_at'</span>]);
+
 </pre>
 </div>
 
@@ -503,7 +508,7 @@ Columns:<br>
 
 <br>
 Examples:<br>
-<div class="div-source-code border-color-div-source-code" style="width: 60%; height: 110px;">
+<div class="div-source-code border-color-div-source-code" style="height: 110px;">
 <pre><span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_hist;
 <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_hist <span class="color-source-sql-keyword">where</span> id=2;
 <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_hist <span class="color-source-sql-keyword">where</span> hist_operation=<span class="color-source-sql-string">'DELETE'</span>;
@@ -562,7 +567,7 @@ Returned dataset columns:<br>
 
 <br>
 Examples:<br>
-<div class="div-source-code border-color-div-source-code" style="width: 60%; height: 130px;">
+<div class="div-source-code border-color-div-source-code" style="height: 130px;">
 <pre><span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_changes();
 <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(<span class="color-source-sql-string">'id=&dollar;1'</span>,2)
   <span class="color-source-sql-keyword">where</span> column_name <span class="color-source-sql-keyword">not</span> <span class="color-source-sql-keyword">in</span> (<span class="color-source-sql-string">'id'</span>,<span class="color-source-sql-string">'invoice_id'</span>)
@@ -589,7 +594,7 @@ Parameters:<br>
 
 <br>
 Example:<br>
-<div class="div-source-code border-color-div-source-code" style="width: 60%; height: 175px;">
+<div class="div-source-code border-color-div-source-code" style="height: 175px;">
 <pre><span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_at_timestamp(now()-<span class="color-source-sql-keyword">interval</span> <span class="color-source-sql-string">'1 hour'</span>);
 
 <span class="color-source-sql-keyword">do</span> &dollar;&dollar;
@@ -621,7 +626,7 @@ Parameters:<br>
 
 <br>
 Example:<br>
-<div class="div-source-code border-color-div-source-code" style="width: 60%; height: 70px;">
+<div class="div-source-code border-color-div-source-code" style="height: 70px;">
 <pre><span class="color-source-sql-keyword">call</span> pghist.hist_disable(<span class="color-source-sql-string">'document'</span>);
 <span class="color-source-sql-keyword">call</span> pghist.hist_disable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>);
 </pre>
@@ -747,7 +752,7 @@ Example:<br>
 
 
 <a id="hist_table"></a>
-<p style="font-size:larger;"><b>History table pghist.hist_[schema]_[table]</b></p>
+<p style="font-size:larger;"><b>History table pghist.hist_data$[schema]_[table]</b></p>
 <br>
 History table is created in addition to the main table,
 developer (owner of main table) has access through the view <a href="#view_hist">[schema].[table]_hist</a>
@@ -767,7 +772,7 @@ developer (owner of main table) has access through the view <a href="#view_hist"
 Example:<br>
 <div class="div-source-code border-color-div-source-code" style="height: 130px;">
 <pre><span class="color-source-sql-keyword">select</span> *
-  <span class="color-source-sql-keyword">from</span> pghist.hist_example_invoice h
+  <span class="color-source-sql-keyword">from</span> pghist.hist_data&dollar;example_invoice h
   <span class="color-source-sql-keyword">join</span> pghist.hist_statement s <span class="color-source-sql-keyword">on</span> s.id=h.hist_statement_id
   <span class="color-source-sql-keyword">join</span> pghist.hist_query q <span class="color-source-sql-keyword">on</span> q.hash=s.query_hash
   <span class="color-source-sql-keyword">where</span> q.<span class="color-source-sql-keyword">text</span> <span class="color-source-sql-keyword">like</span> <span class="color-source-sql-string">'do%begin%'</span>
@@ -785,24 +790,35 @@ Example:<br>
   <tr><td style="white-space: nowrap;"><b>pghist.hist_transaction</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">transactions</td></tr>
   <tr><td style="white-space: nowrap;"><b>pghist.hist_query</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">SQL queries</td></tr>
   <tr><td style="white-space: nowrap;"><b>pghist.hist_statement</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">SQL statements</td></tr>
+  <tr><td style="white-space: nowrap;"><b>pghist.hist_table</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">history tables</td></tr>
+  <tr><td style="white-space: nowrap;"><b>pghist.hist_table_column</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">columns of history tables</td></tr>
+  <tr><td style="white-space: nowrap;"><b>pghist.hist_column_custom_function</b></td><td style="text-align: center; width: 30px;">-</td><td style="padding-top: 5px; padding-bottom: 5px;">custom functions of columns</td></tr>
 </table>
 
 
 <br>
-On installation created tables that store common data:
-transaction date-time and SQL expressions, operation, SQL query, user, session, etc.
+On installation created tables that store common data
+(transaction date-time and SQL expressions, operation, SQL query, user, session, etc) 
+and tables with settings.
+Modification of common tables is allowed using stored procedures.
+By default, developers (owners of main tables) do not have access to common tables; if necessary, privilegies are granted manually.
 <br>
-History table <a href="#hist_table">pghist.hist_[schema]_[table]</a> by field <em>statement_id</em> refers to <em>pghist.hist_statement</em>, which in, in turn, refers to <em>pghist.hist_transaction</em> and <em>pghist.hist_query</em>.
-By default, developers (owners of main tables) do not have access to common tables; if necessary, privilegies are granted manually
+<br>
+History table <a href="#hist_table">pghist.hist_data$[schema]_[table]</a> by field <em>statement_id</em> refers to <em>pghist.hist_statement</em>, which in, in turn, refers to <em>pghist.hist_transaction</em> and <em>pghist.hist_query</em>.
+
 <br>
 <br>
 Example:<br>
-<div class="div-source-code border-color-div-source-code" style="height: 130px;">
+<div class="div-source-code border-color-div-source-code" style="height: 190px;">
 <pre><span class="color-source-sql-keyword">select</span> *
   <span class="color-source-sql-keyword">from</span> pghist.hist_statement s
   <span class="color-source-sql-keyword">join</span> pghist.hist_transaction t <span class="color-source-sql-keyword">on</span> t.id=s.transaction_id
   <span class="color-source-sql-keyword">join</span> pghist.hist_query q <span class="color-source-sql-keyword">on</span> q.hash=s.query_hash
   <span class="color-source-sql-keyword">where</span> t.timestamp_commit <span class="color-source-sql-keyword">between</span> <span class="color-source-sql-string">'2024-04-06 10:00:00'</span> <span class="color-source-sql-keyword">and</span> <span class="color-source-sql-string">'2024-04-06 11:00:00'</span>;
+
+<span class="color-source-sql-keyword">select</span> *
+  <span class="color-source-sql-keyword">from</span> pghist.hist_table ht
+  <span class="color-source-sql-keyword">left</span> <span class="color-source-sql-keyword">join</span> pghist.hist_table_column htc <span class="color-source-sql-keyword">on</span> htc.<span class="color-source-sql-keyword">schema</span>=ht.<span class="color-source-sql-keyword">schema</span> <span class="color-source-sql-keyword">and</span> htc.table_name=ht.<span class="color-source-sql-keyword">name</span>;
 </pre>
 </div>
 
