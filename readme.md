@@ -91,7 +91,7 @@ Documentation in file [documentation/documentation.html](https://htmlpreview.git
 *   **Condition (optional)** - when getting a list of changes, you can specify a condition with or without parameter
 *   **Autocorrection** - when performing DDL operations on a table (alter table, create index, etc.), a trigger fires, that corrects the history keeping. When a table is deleted, its history is also deleted
 
-Overview on site [pghist.org](https://pghist.org/)
+Overview on site [pghist.org](https://pghist.org/en/)
 
 ### Support ### 
 
