@@ -176,8 +176,16 @@ begin
 end; $$;
 
 create or replace procedure pghist.hist_enable(table_name name) security definer language plpgsql as $$
+declare
+  v_schema name;
+  v_table_name name;
 begin
-  call pghist.hist_enable(current_schema(), table_name);
+  select quote_ident(n.nspname),quote_ident(c.relname) 
+    into v_schema,v_table_name 
+    from pg_class c
+    join pg_namespace n on n.oid=c.relnamespace
+    where c.oid=table_name::regclass::oid;
+  call pghist.hist_enable(v_schema, v_table_name);
 end; $$;
 
 create or replace procedure pghist.hist_enable_parent(schema name, table_name name) language plpgsql as $$
@@ -185,11 +193,11 @@ declare
   v_parent_schema name;
   v_parent_table_name name;
 begin
-  select c.relnamespace::regnamespace::name,c.relname
+  select quote_ident(quote_ident(c.relnamespace::regnamespace::name)),quote_ident(c.relname)
     into v_parent_schema,v_parent_table_name
-      from pg_inherits i
+    from pg_inherits i
     join pg_class c on c.oid=i.inhparent
-    where i.inhrelid = to_regclass(schema||'.'||table_name)::oid and pghist.hist_exists(c.relnamespace::regnamespace::name,c.relname);
+    where i.inhrelid=(select oid from pg_class where quote_ident(relnamespace::regnamespace::name)=schema and quote_ident(relname)=table_name);
   if v_parent_schema is not null then
     call pghist.hist_enable(v_parent_schema,v_parent_table_name);    
   end if;
@@ -221,8 +229,16 @@ begin
 end; $$;
 
 create or replace procedure pghist.hist_disable(table_name name) security definer language plpgsql as $$
+declare
+  v_schema name;
+  v_table_name name;
 begin
-  call pghist.hist_disable(current_schema(), table_name);
+  select quote_ident(n.nspname),quote_ident(c.relname) 
+    into v_schema,v_table_name 
+    from pg_class c
+    join pg_namespace n on n.oid=c.relnamespace
+    where c.oid=table_name::regclass::oid;
+  call pghist.hist_disable(v_schema, v_table_name);
 end; $$;
 
 create or replace function pghist.event_fn_ddl_command() returns event_trigger security definer as $$

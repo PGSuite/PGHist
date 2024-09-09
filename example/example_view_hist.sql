@@ -1,5 +1,4 @@
 -- Create schema and table, enable history, change data 
-
 drop schema if exists example cascade;
 create schema example;
 
@@ -29,21 +28,21 @@ select hist_timestamp,hist_operation,hist_db_user,amount_old
 -- Select partial info with current values
 select * from example.document_hist
 union all 
-select null,'[CURRENT_VALUES]',null,null,null,null,null,null,* from example.document
+select null,null,null,'[CURRENT_VALUES]',null,null,null,null,null,null,* from example.document
 order by id,1
 
 -- Create extended view and grant select on it to developer
 -- (alternatively to 'grant select on all tables in schema pghist to developer');  
 select *
-  from pghist.hist_example_document h  
+  from pghist.hist_data$example_document h  
   join pghist.hist_statement s on s.id = h.hist_statement_id
   join pghist.hist_query q on q.hash = s.query_hash
   join pghist.hist_transaction t on t.id = s.transaction_id
   order by h.hist_statement_id, h.id;
  
 create or replace view example.document_hist_ext as  
-  select h.id,t.xid,t.xact_start,t.db_client_addr,q.text query_text
-    from pghist.hist_example_document h  
+  select h.id,t.timestamp_commit,t.db_client_addr,q.text query_text
+    from pghist.hist_data$example_document h  
     join pghist.hist_statement s on s.id = h.hist_statement_id
     join pghist.hist_query q on q.hash = s.query_hash
     join pghist.hist_transaction t on t.id = s.transaction_id

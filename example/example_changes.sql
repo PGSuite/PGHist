@@ -1,5 +1,4 @@
 -- Developer create schema and tables, enable history, change default desc, grant privileges to user
-
 drop schema if exists example cascade;
 create schema example;
 

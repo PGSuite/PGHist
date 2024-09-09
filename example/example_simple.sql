@@ -17,7 +17,7 @@ update example set number=20, date=date-1;
 select * from example_hist;
 
 -- View changes by field
-select * from example_changes();
+select * from example_changes() order by 1,2,3;
 
 -- View table at timestamp 
 select * from example_at_timestamp(now()-interval '10 second');
