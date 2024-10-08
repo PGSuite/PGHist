@@ -324,12 +324,13 @@ a, a:link, a:active, a:visited {
 }
 
 .div-source-code {
-    #border: solid 2px red;
+    #border: solid 3px red;
     overflow:scroll;
     min-width: 95%;
     max-width: 200px;   
     border-style: solid;
     border-width: 1px; 
+    padding: 2px 3px; 
     font-family: monospace;
     text-align: left;
 }
@@ -429,6 +430,8 @@ a, a:link, a:active, a:visited {
     
 
 <ul>
+<li><a href="#usage_method">Usage method</a></li>
+<li><a href="#security">Security</a></li>
 <li><a href="#hist_enable">pghist.hist_enable</a></li>
 <li><a href="#view_hist">[schema].[table]_hist</a></li>
 <li><a href="#table_changes">[schema].[table]_changes</a></li>
@@ -448,6 +451,369 @@ a, a:link, a:active, a:visited {
   <div class='div-content-body border-content-body border-color-menu'>
     
 
+<a id="usage_method"></a>
+<p style="font-size:larger;"><b>Usage method</b></p>
+<br>
+
+Call of <a href="#hist_enable">pghist.hist_enable</a> procedure creates 3 objects in the table schema for working with history:
+<br>
+<br>
+<b>1. <a href="#view_hist">[schema].[table]_hist</a> view</b> is a change log (audit) for developers to analyze data problems
+<br><br>
+SQL query and application name allow to determine the location in the source code, transaction identifier - changes in other tables and SQL queries.
+<br><br>
+Example:<br>
+<div class="div-source-code border-color-div-source-code" style="height: 250px;">
+<pre><span class="color-source-sql-comment">-- Create schema and table, enable history, change data </span>
+<span class="color-source-sql-keyword">drop</span> <span class="color-source-sql-keyword">schema</span> <span class="color-source-sql-keyword">if</span> <span class="color-source-sql-keyword">exists</span> example <span class="color-source-sql-keyword">cascade</span>;
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">schema</span> example;
+
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">table</span> example.<span class="color-source-sql-keyword">document</span>(
+  id <span class="color-source-sql-keyword">int</span> <span class="color-source-sql-keyword">primary</span> <span class="color-source-sql-keyword">key</span>,
+  number <span class="color-source-sql-keyword">varchar</span>(10),
+  amount <span class="color-source-sql-keyword">numeric</span>(10,2)
+);
+
+<span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'document'</span>);
+
+<span class="color-source-sql-keyword">insert</span> <span class="color-source-sql-keyword">into</span> example.<span class="color-source-sql-keyword">document</span> <span class="color-source-sql-keyword">values</span> (11, <span class="color-source-sql-string">'#10'</span>, 100);
+<span class="color-source-sql-keyword">insert</span> <span class="color-source-sql-keyword">into</span> example.<span class="color-source-sql-keyword">document</span> <span class="color-source-sql-keyword">values</span> (12, <span class="color-source-sql-string">'#20'</span>, 200);
+<span class="color-source-sql-keyword">update</span> example.<span class="color-source-sql-keyword">document</span> <span class="color-source-sql-keyword">set</span> number=<span class="color-source-sql-string">'#20/2'</span>,amount=210 <span class="color-source-sql-keyword">where</span> id=12;
+<span class="color-source-sql-keyword">update</span> example.<span class="color-source-sql-keyword">document</span> <span class="color-source-sql-keyword">set</span> amount=220 <span class="color-source-sql-keyword">where</span> id=12;
+<span class="color-source-sql-keyword">delete</span> <span class="color-source-sql-keyword">from</span> example.<span class="color-source-sql-keyword">document</span> <span class="color-source-sql-keyword">where</span> id=11;
+
+<span class="color-source-sql-comment">-- Select full info</span>
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_hist;
+
+<span class="color-source-sql-comment">-- Select partial info by id</span>
+<span class="color-source-sql-keyword">select</span> hist_timestamp,hist_operation,hist_db_user,amount_old 
+  <span class="color-source-sql-keyword">from</span> example.document_hist
+  <span class="color-source-sql-keyword">where</span> id=12 <span class="color-source-sql-keyword">and</span> (hist_operation!=<span class="color-source-sql-string">'UPDATE'</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-string">'amount'</span>=<span class="color-source-sql-keyword">any</span>(hist_update_columns))
+  <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> hist_statement_id;
+
+<span class="color-source-sql-comment">-- Select partial info with current values</span>
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_hist
+<span class="color-source-sql-keyword">union</span> <span class="color-source-sql-keyword">all</span> 
+<span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">null</span>,<span class="color-source-sql-keyword">null</span>,<span class="color-source-sql-keyword">null</span>,<span class="color-source-sql-string">'[CURRENT_VALUES]'</span>,<span class="color-source-sql-keyword">null</span>,<span class="color-source-sql-keyword">null</span>,<span class="color-source-sql-keyword">null</span>,<span class="color-source-sql-keyword">null</span>,<span class="color-source-sql-keyword">null</span>,<span class="color-source-sql-keyword">null</span>,* <span class="color-source-sql-keyword">from</span> example.<span class="color-source-sql-keyword">document</span>
+<span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> id,1
+
+<span class="color-source-sql-comment">-- Create extended view and grant select on it to developer</span>
+<span class="color-source-sql-comment">-- (alternatively to 'grant select on all tables in schema pghist to developer');  </span>
+<span class="color-source-sql-keyword">select</span> *
+  <span class="color-source-sql-keyword">from</span> pghist.hist_data&dollar;example_document h  
+  <span class="color-source-sql-keyword">join</span> pghist.hist_statement s <span class="color-source-sql-keyword">on</span> s.id = h.hist_statement_id
+  <span class="color-source-sql-keyword">join</span> pghist.hist_query q <span class="color-source-sql-keyword">on</span> q.hash = s.query_hash
+  <span class="color-source-sql-keyword">join</span> pghist.hist_transaction t <span class="color-source-sql-keyword">on</span> t.id = s.transaction_id
+  <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> h.hist_statement_id, h.id;
+ 
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">view</span> example.document_hist_ext <span class="color-source-sql-keyword">as</span>  
+  <span class="color-source-sql-keyword">select</span> h.id,t.timestamp_commit,t.db_client_addr,q.<span class="color-source-sql-keyword">text</span> query_text
+    <span class="color-source-sql-keyword">from</span> pghist.hist_data&dollar;example_document h  
+    <span class="color-source-sql-keyword">join</span> pghist.hist_statement s <span class="color-source-sql-keyword">on</span> s.id = h.hist_statement_id
+    <span class="color-source-sql-keyword">join</span> pghist.hist_query q <span class="color-source-sql-keyword">on</span> q.hash = s.query_hash
+    <span class="color-source-sql-keyword">join</span> pghist.hist_transaction t <span class="color-source-sql-keyword">on</span> t.id = s.transaction_id
+    <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> h.hist_statement_id, h.id;
+   
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_hist_ext <span class="color-source-sql-keyword">where</span> id=12;   
+
+<span class="color-source-sql-keyword">grant</span> <span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">on</span> example.document_hist_ext <span class="color-source-sql-keyword">to</span> developer_1;      
+</pre>
+</div>
+
+<br>
+<br>
+<b>2. <a href="#table_changes">[schema].[table]_changes</a> function</b> returns a set of data to display changes to the user
+<br><br>
+Information is displayed in the old-new value format with a description.
+<br><br>
+Display identifiers and foreign keys to the user is uninformative, so for each row and field values description is displayed that can be overridden via <a href="#hist_expression_desc">SQL expression</a>.
+By default, comment table with the primary key is returned for a row description, first text field of related table is returned for a column that is the foreign key,
+for others - value. Thus, can display to user a description without value.
+<br><br>
+Some columns (for example, username) can be redefined via <a href="#hist_custom_funcs">customization functions</a>.
+<br><br>
+Example:<br>
+<div class="div-source-code border-color-div-source-code" style="height: 250px;">
+<pre><span class="color-source-sql-comment">-- Create schema and tables</span>
+<span class="color-source-sql-keyword">drop</span> <span class="color-source-sql-keyword">schema</span> <span class="color-source-sql-keyword">if</span> <span class="color-source-sql-keyword">exists</span> example <span class="color-source-sql-keyword">cascade</span>;
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">schema</span> example;
+
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">table</span> example.customer(
+  id <span class="color-source-sql-keyword">int</span> <span class="color-source-sql-keyword">primary</span> <span class="color-source-sql-keyword">key</span>,
+  <span class="color-source-sql-keyword">name</span> <span class="color-source-sql-keyword">varchar</span>(100) <span class="color-source-sql-keyword">not</span> <span class="color-source-sql-keyword">null</span>
+);
+<span class="color-source-sql-keyword">insert</span> <span class="color-source-sql-keyword">into</span> example.customer <span class="color-source-sql-keyword">values</span> (1,<span class="color-source-sql-string">'Horns'</span>),(2,<span class="color-source-sql-string">'Hooves'</span>);
+
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">table</span> example.invoice(
+  id <span class="color-source-sql-keyword">int</span> <span class="color-source-sql-keyword">primary</span> <span class="color-source-sql-keyword">key</span>,  
+  number <span class="color-source-sql-keyword">varchar</span>(10),
+  date date,  
+  customer_id <span class="color-source-sql-keyword">int</span> <span class="color-source-sql-keyword">references</span> example.customer(id),
+  amount <span class="color-source-sql-keyword">numeric</span>(20,2) 
+);
+<span class="color-source-sql-keyword">comment</span> <span class="color-source-sql-keyword">on</span> <span class="color-source-sql-keyword">table</span> example.invoice <span class="color-source-sql-keyword">is</span> <span class="color-source-sql-string">'Invoice'</span>;
+<span class="color-source-sql-keyword">comment</span> <span class="color-source-sql-keyword">on</span> <span class="color-source-sql-keyword">column</span> example.invoice.id <span class="color-source-sql-keyword">is</span> <span class="color-source-sql-string">'Identifier'</span>;
+<span class="color-source-sql-keyword">comment</span> <span class="color-source-sql-keyword">on</span> <span class="color-source-sql-keyword">column</span> example.invoice.number <span class="color-source-sql-keyword">is</span> <span class="color-source-sql-string">'Number'</span>;
+<span class="color-source-sql-keyword">comment</span> <span class="color-source-sql-keyword">on</span> <span class="color-source-sql-keyword">column</span> example.invoice.date <span class="color-source-sql-keyword">is</span> <span class="color-source-sql-string">'Date'</span>;
+<span class="color-source-sql-keyword">comment</span> <span class="color-source-sql-keyword">on</span> <span class="color-source-sql-keyword">column</span> example.invoice.customer_id <span class="color-source-sql-keyword">is</span> <span class="color-source-sql-string">'Сustomer'</span>;
+<span class="color-source-sql-keyword">comment</span> <span class="color-source-sql-keyword">on</span> <span class="color-source-sql-keyword">column</span> example.invoice.amount <span class="color-source-sql-keyword">is</span> <span class="color-source-sql-string">'Amount'</span>;
+
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">table</span> example.product(
+  id <span class="color-source-sql-keyword">int</span> <span class="color-source-sql-keyword">primary</span> <span class="color-source-sql-keyword">key</span>,
+  <span class="color-source-sql-keyword">name</span> <span class="color-source-sql-keyword">varchar</span>(100) <span class="color-source-sql-keyword">not</span> <span class="color-source-sql-keyword">null</span>,
+  code <span class="color-source-sql-keyword">varchar</span>(10) <span class="color-source-sql-keyword">not</span> <span class="color-source-sql-keyword">null</span>
+);
+
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">table</span> example.invoice_product(
+  id serial <span class="color-source-sql-keyword">primary</span> <span class="color-source-sql-keyword">key</span>,
+  invoice_id <span class="color-source-sql-keyword">int</span> <span class="color-source-sql-keyword">references</span> example.invoice(id),   
+  product_id <span class="color-source-sql-keyword">int</span> <span class="color-source-sql-keyword">references</span> example.product(id),  
+  quantity <span class="color-source-sql-keyword">int</span>,
+  color <span class="color-source-sql-keyword">char</span>(1) <span class="color-source-sql-keyword">check</span> (color <span class="color-source-sql-keyword">in</span> (<span class="color-source-sql-string">'R'</span>,<span class="color-source-sql-string">'G'</span>,<span class="color-source-sql-string">'B'</span>))  
+);
+<span class="color-source-sql-keyword">comment</span> <span class="color-source-sql-keyword">on</span> <span class="color-source-sql-keyword">table</span> example.invoice_product <span class="color-source-sql-keyword">is</span> <span class="color-source-sql-string">'Product of invoice'</span>;
+<span class="color-source-sql-keyword">comment</span> <span class="color-source-sql-keyword">on</span> <span class="color-source-sql-keyword">column</span> example.invoice_product.id <span class="color-source-sql-keyword">is</span> <span class="color-source-sql-string">'Identifier'</span>;
+<span class="color-source-sql-keyword">comment</span> <span class="color-source-sql-keyword">on</span> <span class="color-source-sql-keyword">column</span> example.invoice_product.invoice_id <span class="color-source-sql-keyword">is</span> <span class="color-source-sql-string">'Invoice'</span>;
+<span class="color-source-sql-keyword">comment</span> <span class="color-source-sql-keyword">on</span> <span class="color-source-sql-keyword">column</span> example.invoice_product.product_id <span class="color-source-sql-keyword">is</span> <span class="color-source-sql-string">'Product'</span>;
+<span class="color-source-sql-keyword">comment</span> <span class="color-source-sql-keyword">on</span> <span class="color-source-sql-keyword">column</span> example.invoice_product.quantity <span class="color-source-sql-keyword">is</span> <span class="color-source-sql-string">'Quantity'</span>;
+<span class="color-source-sql-keyword">comment</span> <span class="color-source-sql-keyword">on</span> <span class="color-source-sql-keyword">column</span> example.invoice_product.color <span class="color-source-sql-keyword">is</span> <span class="color-source-sql-string">'Color'</span>;
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">index</span> <span class="color-source-sql-keyword">on</span> example.invoice_product(invoice_id);
+
+<span class="color-source-sql-comment">-- Enable history</span>
+<span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>);
+<span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, <span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>);
+
+
+<span class="color-source-sql-comment">-- Change data</span>
+<span class="color-source-sql-keyword">insert</span> <span class="color-source-sql-keyword">into</span> example.invoice <span class="color-source-sql-keyword">values</span> (12,<span class="color-source-sql-string">'#20'</span>, <span class="color-source-sql-keyword">current_date</span>, 1, 120.00);
+<span class="color-source-sql-keyword">update</span> example.invoice <span class="color-source-sql-keyword">set</span> customer_id=2 <span class="color-source-sql-keyword">where</span> id=12;
+<span class="color-source-sql-keyword">insert</span> <span class="color-source-sql-keyword">into</span> example.product(id,<span class="color-source-sql-keyword">name</span>,code) <span class="color-source-sql-keyword">values</span> (101,<span class="color-source-sql-string">'Pensil'</span>,<span class="color-source-sql-string">'030'</span>),(102,<span class="color-source-sql-string">'Notebook'</span>,<span class="color-source-sql-string">'040'</span>);
+<span class="color-source-sql-keyword">insert</span> <span class="color-source-sql-keyword">into</span> example.invoice_product(id, invoice_id, product_id, quantity, color) <span class="color-source-sql-keyword">values</span> (1,12,101,1000,<span class="color-source-sql-string">'R'</span>),(2,12,101,10,<span class="color-source-sql-string">'G'</span>);
+
+<span class="color-source-sql-keyword">do</span> &dollar;&dollar;
+<span class="color-source-sql-keyword">begin</span>
+  <span class="color-source-sql-keyword">update</span> example.invoice_product <span class="color-source-sql-keyword">set</span> quantity=quantity+1,color=<span class="color-source-sql-string">'B'</span> <span class="color-source-sql-keyword">where</span> id=1;
+  <span class="color-source-sql-keyword">delete</span> <span class="color-source-sql-keyword">from</span> example.invoice_product <span class="color-source-sql-keyword">where</span> id=2;
+  <span class="color-source-sql-keyword">update</span> example.invoice <span class="color-source-sql-keyword">set</span> amount=150 <span class="color-source-sql-keyword">where</span> id=12;
+<span class="color-source-sql-keyword">end</span>; 
+&dollar;&dollar;;
+
+<span class="color-source-sql-comment">-- Select all changes, first three columns provide chronological</span>
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes() <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
+
+<span class="color-source-sql-comment">-- Select all changes with column id (immutable), insert detail by columns  </span>
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(insert_detail=&#62;<span class="color-source-sql-keyword">true</span>, columns_immutable=&#62;<span class="color-source-sql-keyword">true</span>) <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3; 
+
+<span class="color-source-sql-comment">-- Select partial changes by id</span>
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(<span class="color-source-sql-string">'id=12'</span>) <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
+
+<span class="color-source-sql-comment">-- Select changes in two related tables, fast execution provides index invoice_product(invoice_id)</span>
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(<span class="color-source-sql-string">'id=&dollar;1'</span>,12)
+<span class="color-source-sql-keyword">union</span> <span class="color-source-sql-keyword">all</span>
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(<span class="color-source-sql-string">'invoice_id=&dollar;1'</span>, 12)
+<span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
+
+<span class="color-source-sql-comment">-- Set description expression for columns row_desc and value_desc   </span>
+<span class="color-source-sql-keyword">call</span> pghist.hist_expression_row_desc(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>, <span class="color-source-sql-string">''</span><span class="color-source-sql-string">'Invoice'</span><span class="color-source-sql-string">''</span>);   
+<span class="color-source-sql-keyword">call</span> pghist.hist_expression_row_desc(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, &dollar;&dollar; <span class="color-source-sql-string">'Row #'</span>||&dollar;1.id||<span class="color-source-sql-string">' / '</span>||(<span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">name</span> <span class="color-source-sql-keyword">from</span> example.product <span class="color-source-sql-keyword">where</span> id=&dollar;1.product_id) &dollar;&dollar;);
+<span class="color-source-sql-keyword">call</span> pghist.hist_expression_value_desc(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, <span class="color-source-sql-string">'color'</span>, &dollar;&dollar; <span class="color-source-sql-keyword">case</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'R'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Red'</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'B'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Blue'</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'G'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Green'</span> <span class="color-source-sql-keyword">else</span> &dollar;1 <span class="color-source-sql-keyword">end</span> &dollar;&dollar;);
+
+<span class="color-source-sql-comment">-- Replace function for column db_user_name</span>
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.db_user_name(db_user <span class="color-source-sql-keyword">name</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">varchar</span> <span class="color-source-sql-keyword">language</span> plpgsql <span class="color-source-sql-keyword">as</span> &dollar;&dollar; 
+<span class="color-source-sql-keyword">begin</span> 
+  return <span class="color-source-sql-string">'['</span>||db_user||<span class="color-source-sql-string">']'</span>;                                        
+<span class="color-source-sql-keyword">end</span>; &dollar;&dollar;;
+<span class="color-source-sql-keyword">call</span> pghist.hist_column_custom_function(<span class="color-source-sql-string">'db_user_name'</span>, <span class="color-source-sql-string">'example.db_user_name'</span>);
+</pre>
+</div>
+<br>
+To union history of multiple tables, function results can be combined using the <em>union all</em> operator.
+When enabling history for detail table, must specify the master table, foreign key fields will be stored and indexed.
+<br><br>
+For data schemas with a complex structure, it is recommended to create: functions [schema].[table]_changes_ui,
+one table_changes_ui data type and one webpage to display history of any table.
+<br><br>
+Example:<br>
+<div class="div-source-code border-color-div-source-code" style="height: 250px;">
+<pre><span class="color-source-sql-comment">-- Create function that returns all columns, including unnecessary</span>
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.invoice_changes_ui_simple(id <span class="color-source-sql-keyword">int</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">setof</span> pghist.table_change <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">sql</span> <span class="color-source-sql-keyword">security</span> <span class="color-source-sql-keyword">definer</span> <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
+  <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(<span class="color-source-sql-string">'id=&dollar;1'</span>,id,insert_detail=&#62;<span class="color-source-sql-keyword">true</span>)
+  <span class="color-source-sql-keyword">union</span> <span class="color-source-sql-keyword">all</span>
+  <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(<span class="color-source-sql-string">'invoice_id=&dollar;1'</span>, id)
+  <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
+&dollar;&dollar;;
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes_ui_simple(12);
+
+<span class="color-source-sql-comment">-- Create type with only necessary columns for the UI and cast function to it,</span>
+<span class="color-source-sql-comment">-- type is created only once (as a rule, there is only one history view form per project) </span>
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">type</span> example.table_change_ui <span class="color-source-sql-keyword">as</span> (
+  <span class="color-source-sql-keyword">timestamp</span> timestamptz,
+  operation_name <span class="color-source-sql-keyword">varchar</span>,
+  db_user_name <span class="color-source-sql-keyword">varchar</span>,
+  row_desc <span class="color-source-sql-keyword">text</span>,  
+  column_comment <span class="color-source-sql-keyword">varchar</span>,      
+  value_old_desc <span class="color-source-sql-keyword">text</span>,      
+  value_new_desc <span class="color-source-sql-keyword">text</span>
+);
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.table_change_ui_cast(tc pghist.table_change) <span class="color-source-sql-keyword">returns</span> example.table_change_ui <span class="color-source-sql-keyword">language</span> plpgsql <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
+<span class="color-source-sql-keyword">begin</span>
+  return (tc.<span class="color-source-sql-keyword">timestamp</span>,tc.operation_name,tc.db_user_name,tc.row_desc,tc.column_comment,tc.value_old_desc,tc.value_new_desc)::example.table_change_ui; 
+<span class="color-source-sql-keyword">end</span>; &dollar;&dollar;;
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">cast</span>(pghist.table_change <span class="color-source-sql-keyword">as</span> example.table_change_ui) <span class="color-source-sql-keyword">with</span> <span class="color-source-sql-keyword">function</span> example.table_change_ui_cast <span class="color-source-sql-keyword">as</span> <span class="color-source-sql-keyword">assignment</span>;
+
+<span class="color-source-sql-comment">-- Create function that returns only necessary columns</span>
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.invoice_changes_ui(id <span class="color-source-sql-keyword">int</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">setof</span> example.table_change_ui <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">sql</span> <span class="color-source-sql-keyword">security</span> <span class="color-source-sql-keyword">definer</span> <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
+  <span class="color-source-sql-keyword">select</span> tc::pghist.table_change::example.table_change_ui <span class="color-source-sql-keyword">from</span> ( 
+    <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(<span class="color-source-sql-string">'id=&dollar;1'</span>,id,insert_detail=&#62;<span class="color-source-sql-keyword">true</span>)
+    <span class="color-source-sql-keyword">union</span> <span class="color-source-sql-keyword">all</span>
+    <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(<span class="color-source-sql-string">'invoice_id=&dollar;1'</span>, id)
+    <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3
+  ) tc;  
+&dollar;&dollar;;
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes_ui(12);
+</pre>
+</div>
+<br>
+<br>
+<b>3. <a href="#table_at_timestamp">[schema].[table]_at_timestamp </a> function</b> creates copy of table (temporary table) at a point in time in the past and returns it
+<br><br>
+Used for data recovery and SQL queries from multiple tables at a point in time in the past,
+can be joined to the [schema].[table]_hist view by primary key.
+<br><br>
+For optimazation of SQL queries, the created temporary table has indexes similar to original,
+recovery time can be set once in the <em>pghist.at_timestamp</em> parameter.
+<br><br>
+Example:<br>
+<div class="div-source-code border-color-div-source-code" style="height: 250px;">
+<pre><span class="color-source-sql-comment">--  Create schema and tables, enable history</span>
+<span class="color-source-sql-keyword">drop</span> <span class="color-source-sql-keyword">schema</span> <span class="color-source-sql-keyword">if</span> <span class="color-source-sql-keyword">exists</span> example <span class="color-source-sql-keyword">cascade</span>;
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">schema</span> example;
+
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">table</span> example.customer(
+  id <span class="color-source-sql-keyword">int</span> <span class="color-source-sql-keyword">primary</span> <span class="color-source-sql-keyword">key</span>,
+  <span class="color-source-sql-keyword">name</span> <span class="color-source-sql-keyword">varchar</span>(100) <span class="color-source-sql-keyword">not</span> <span class="color-source-sql-keyword">null</span>
+);
+<span class="color-source-sql-keyword">insert</span> <span class="color-source-sql-keyword">into</span> example.customer <span class="color-source-sql-keyword">values</span> (1,<span class="color-source-sql-string">'Horns'</span>),(2,<span class="color-source-sql-string">'Hooves'</span>);
+
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">table</span> example.<span class="color-source-sql-keyword">document</span>(
+  id <span class="color-source-sql-keyword">int</span> <span class="color-source-sql-keyword">primary</span> <span class="color-source-sql-keyword">key</span>,
+  number <span class="color-source-sql-keyword">varchar</span>(10),
+  date date
+);
+
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">table</span> example.invoice(
+  <span class="color-source-sql-keyword">primary</span> <span class="color-source-sql-keyword">key</span> (id),
+  customer_id <span class="color-source-sql-keyword">int</span> <span class="color-source-sql-keyword">references</span> example.customer(id),
+  amount <span class="color-source-sql-keyword">numeric</span>(20,2)
+) <span class="color-source-sql-keyword">inherits</span> (example.<span class="color-source-sql-keyword">document</span>);
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">index</span> <span class="color-source-sql-keyword">on</span> example.invoice(customer_id);
+
+<span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'customer'</span>);
+<span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'document'</span>);
+<span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>);
+
+<span class="color-source-sql-comment">-- Enter data into tables   </span>
+<span class="color-source-sql-keyword">insert</span> <span class="color-source-sql-keyword">into</span> example.<span class="color-source-sql-keyword">document</span> <span class="color-source-sql-keyword">values</span> (11,<span class="color-source-sql-string">'#10'</span>, <span class="color-source-sql-keyword">current_date</span>);
+<span class="color-source-sql-keyword">insert</span> <span class="color-source-sql-keyword">into</span> example.invoice  <span class="color-source-sql-keyword">values</span> (12,<span class="color-source-sql-string">'#20'</span>, <span class="color-source-sql-keyword">current_date</span>,   1, 120.00);
+<span class="color-source-sql-keyword">insert</span> <span class="color-source-sql-keyword">into</span> example.invoice  <span class="color-source-sql-keyword">values</span> (13,<span class="color-source-sql-string">'#30'</span>, <span class="color-source-sql-keyword">current_date</span>-1, 2, 130.00);
+
+<span class="color-source-sql-comment">-- Select data in past</span>
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_at_timestamp(now()-<span class="color-source-sql-keyword">interval</span> <span class="color-source-sql-string">'10 second'</span>);
+
+<span class="color-source-sql-comment">-- Erroneous update and recovery</span>
+<span class="color-source-sql-keyword">update</span> example.invoice <span class="color-source-sql-keyword">set</span> customer_id=2,amount=300 <span class="color-source-sql-keyword">where</span> date=<span class="color-source-sql-keyword">current_date</span>;
+
+<span class="color-source-sql-keyword">update</span> example.invoice i
+    <span class="color-source-sql-keyword">set</span> amount = h.amount
+  <span class="color-source-sql-keyword">from</span> example.invoice_at_timestamp(<span class="color-source-sql-string">'2024-04-06 10:00:00'</span>) h
+  <span class="color-source-sql-keyword">where</span> i.id = h.id
+    <span class="color-source-sql-keyword">and</span> i.date=<span class="color-source-sql-keyword">current_date</span>;
+
+<span class="color-source-sql-comment">-- Сombination log and versioning   </span>
+<span class="color-source-sql-keyword">select</span> * 
+  <span class="color-source-sql-keyword">from</span> example.invoice_at_timestamp(<span class="color-source-sql-string">'2024-04-06 10:00:00'</span>)
+  <span class="color-source-sql-keyword">where</span> id <span class="color-source-sql-keyword">in</span> (
+          <span class="color-source-sql-keyword">select</span> id <span class="color-source-sql-keyword">from</span> example.invoice_hist
+            <span class="color-source-sql-keyword">where</span> hist_timestamp&#62;<span class="color-source-sql-string">'2024-04-06 10:00:00'</span>
+              <span class="color-source-sql-keyword">and</span> hist_db_user=<span class="color-source-sql-keyword">current_user</span>
+        );
+
+<span class="color-source-sql-comment">-- Сomplex query in past        </span>
+<span class="color-source-sql-keyword">select</span> * 
+  <span class="color-source-sql-keyword">from</span> example.invoice i
+  <span class="color-source-sql-keyword">join</span> example.customer c <span class="color-source-sql-keyword">on</span> c.id=i.customer_id;
+ 
+<span class="color-source-sql-keyword">do</span> &dollar;&dollar;
+<span class="color-source-sql-keyword">begin</span>
+  perform set_config(<span class="color-source-sql-string">'pghist.at_timestamp'</span>, <span class="color-source-sql-string">'2024-04-06 10:00:00'</span>, <span class="color-source-sql-keyword">true</span>);    
+  perform example.invoice_at_timestamp();    
+  perform example.customer_at_timestamp();
+<span class="color-source-sql-keyword">end</span>; 
+&dollar;&dollar;;
+ 
+<span class="color-source-sql-keyword">select</span> * 
+  <span class="color-source-sql-keyword">from</span> example_invoice_at_timestamp i
+  <span class="color-source-sql-keyword">join</span> example_customer_at_timestamp c <span class="color-source-sql-keyword">on</span> c.id=i.customer_id;
+</pre>
+</div>
+
+
+<div style="height: 25px;"></div>
+<div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
+
+
+<a id="security"></a>
+<p style="font-size:larger;"><b>Security</b></p>
+<br>
+History table <a href="#hist_table">hist_data$[schema]_[table]</a> and trigger functions are created in pghist schema,
+objects for working with history are created in the table schema.
+Owner of all created objects is superuser, stored procedures are created with option <em>security definer</em>.
+Owner of table is granted privilegies with grant option to select from view <a href="#view_hist">[schema].[table]_hist</a> and 
+execute functions <a href="#table_changes">[schema].[table]_changes</a>, <a href="#table_at_timestamp">[schema].[table]_at_timestamp</a>.
+<br><br>
+If necessary, superuser grants select on <a href="#common_tables">common tables</a> to developer.
+<br><br>
+Data access is shown in <a href="/files/schema/data-schema.png" target="_blank">schema.</a>
+<br><br>
+Example:<br>
+<div class="div-source-code border-color-div-source-code" style="height: 250px;">
+<pre><span class="color-source-sql-comment">-- postgres grant privileges on pghist schema and pghist.hist_enable procedure to developer_1</span>
+<span class="color-source-sql-comment">-- all privileges in pghist_grants.sql file</span>
+<span class="color-source-sql-keyword">grant</span> usage <span class="color-source-sql-keyword">on</span> <span class="color-source-sql-keyword">schema</span> pghist <span class="color-source-sql-keyword">to</span> developer_1;
+<span class="color-source-sql-keyword">grant</span> <span class="color-source-sql-keyword">execute</span> <span class="color-source-sql-keyword">on</span> <span class="color-source-sql-keyword">procedure</span> pghist.hist_enable(<span class="color-source-sql-keyword">name</span>) <span class="color-source-sql-keyword">to</span> developer_1;
+
+
+<span class="color-source-sql-comment">-- developer_1 create table, enable history, grant privileges on example table and example_changes function to user_1</span>
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">table</span> example(
+  id <span class="color-source-sql-keyword">int</span> <span class="color-source-sql-keyword">primary</span> <span class="color-source-sql-keyword">key</span>,
+  <span class="color-source-sql-keyword">name</span> <span class="color-source-sql-keyword">varchar</span>(20),
+  number <span class="color-source-sql-keyword">numeric</span>(10,2),
+  date date
+);
+
+<span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'example'</span>);
+  
+<span class="color-source-sql-keyword">grant</span> <span class="color-source-sql-keyword">select</span>,<span class="color-source-sql-keyword">insert</span>,<span class="color-source-sql-keyword">update</span> <span class="color-source-sql-keyword">on</span> example <span class="color-source-sql-keyword">to</span> user_1;
+<span class="color-source-sql-keyword">grant</span> <span class="color-source-sql-keyword">execute</span> <span class="color-source-sql-keyword">on</span> <span class="color-source-sql-keyword">function</span> example_changes <span class="color-source-sql-keyword">to</span> user_1;
+
+
+<span class="color-source-sql-comment">-- user_1 change data and view changes </span>
+<span class="color-source-sql-keyword">insert</span> <span class="color-source-sql-keyword">into</span> example <span class="color-source-sql-keyword">values</span> (1, <span class="color-source-sql-string">'Example'</span>, 10, <span class="color-source-sql-keyword">current_date</span>);
+<span class="color-source-sql-keyword">update</span> example <span class="color-source-sql-keyword">set</span> number=20, date=date-1;
+
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example_changes() <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
+
+<span class="color-source-sql-comment">-- When trying to select log, user_1 receives an error</span>
+<span class="color-source-sql-comment">-- SQL Error [42501]: ERROR: permission denied for view example_hist </span>
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example_hist;
+</pre>
+</div>
+
+
+<div style="height: 25px;"></div>
+<div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
+
+
 <a id="hist_enable"></a>
 <p style="font-size:larger;"><b>pghist.hist_enable</b>(schema, table_name, master_table_schema, master_table_name, columns_excluded)</p>
 <br>
@@ -456,63 +822,57 @@ Procedure enable keeping history of changes for table, create history table, tri
 <br>
 Parameters:<br>
 <table>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">schema</td><td style="text-align: center; width: 30px;">-</td><td>table schema (optional)</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">table_name</td><td style="text-align: center; width: 30px;">-</td><td>table name</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">master_table_schema</td><td style="text-align: center; width: 30px;">-</td><td>master table schema (optional)</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">master_table_name</td><td style="text-align: center; width: 30px;">-</td><td>master table name (optional)</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">columns_excluded</td><td style="text-align: center; width: 30px;">-</td><td>excluded columns (optional)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">schema</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name</td><td style="text-align: center; width: 30px;">-</td><td>table schema (optional)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">table_name</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name</td><td style="text-align: center; width: 30px;">-</td><td>table name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">master_table_schema</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name</td><td style="text-align: center; width: 30px;">-</td><td>master table schema (optional)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">master_table_name</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name</td><td style="text-align: center; width: 30px;">-</td><td>master table name (optional)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">columns_excluded</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name[]</td><td style="text-align: center; width: 30px;">-</td><td>excluded columns (optional)</td></tr>
 </table>
-
 <br>
 Examples:<br>
-<div class="div-source-code border-color-div-source-code" style="height: 140px;">
+<div class="div-source-code border-color-div-source-code" style="height: 138px;">
 <pre><span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'document'</span>);
 
 <span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>);
 <span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, <span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>);
 
 <span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'orm'</span>, <span class="color-source-sql-string">'myclass'</span>, columns_excluded =&#62; <span class="color-source-sql-keyword">array</span>[<span class="color-source-sql-string">'inserted_at'</span>,<span class="color-source-sql-string">'updated_at'</span>]);
-
 </pre>
 </div>
 
 <div style="height: 25px;"></div>
 <div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
-
 
 
 <a id="view_hist"></a>
 <p style="font-size:larger;"><b>[schema].[table]_hist</b></p>
 <br>
-View contains a list of changes by row, created when history keeping is enabled.<br>
-Sorted by first two columns to provide chronology
+View contains a list of changes by row, created when history keeping is enabled.<br>Sorted by first two columns to provide chronology
 <br>
 <br>
 Columns:<br>
 <table>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_statement_num</td><td style="text-align: center; width: 30px;">-</td><td>common SQL statement number</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_row_num</td><td style="text-align: center; width: 30px;">-</td><td>row number in dataset that modified SQL statement</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_timestamp</td><td style="text-align: center; width: 30px;">-</td><td>SQL statement start date-time</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_operation</td><td style="text-align: center; width: 30px;">-</td><td>operation: INSERT,UPDATE,DELETE,TRUNCATE</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_update_columns</td><td style="text-align: center; width: 30px;">-</td><td>changed columns for UPDATE operation</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_db_user</td><td style="text-align: center; width: 30px;">-</td><td>database user</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_app_user</td><td style="text-align: center; width: 30px;">-</td><td>application user defined as current_setting('app.user')</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_application_name</td><td style="text-align: center; width: 30px;">-</td><td>application name</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_query_text</td><td style="text-align: center; width: 30px;">-</td><td>SQL query text</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_statement_id</td><td style="text-align: center; width: 30px;">-</td><td>SQL statement ID referenced on pghist.hist_statement table</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[primary key column(s)]</td><td style="text-align: center; width: 30px;">-</td><td>primary key value (can be several)</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[column(s) of foreign key on master table]</td><td style="text-align: center; width: 30px;">-</td><td>foreign key value on master table (optional, can be several)</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[column...]_old</td><td style="text-align: center; width: 30px;">-</td><td>old value for each column of table [schema].[table]</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_statement_num</td><td style="width: 5px;"></td><td style="white-space: nowrap;">bigint</td><td style="text-align: center; width: 30px;">-</td><td>common SQL statement number</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_row_num</td><td style="width: 5px;"></td><td style="white-space: nowrap;">bigint</td><td style="text-align: center; width: 30px;">-</td><td>row number in dataset that modified SQL statement</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_timestamp</td><td style="width: 5px;"></td><td style="white-space: nowrap;">timestamptz</td><td style="text-align: center; width: 30px;">-</td><td>SQL statement start date-time</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_operation</td><td style="width: 5px;"></td><td style="white-space: nowrap;">varchar</td><td style="text-align: center; width: 30px;">-</td><td>operation: INSERT,UPDATE,DELETE,TRUNCATE</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_update_columns</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name[]</td><td style="text-align: center; width: 30px;">-</td><td>changed columns for UPDATE operation</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_db_user</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name</td><td style="text-align: center; width: 30px;">-</td><td>database user</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_app_user</td><td style="width: 5px;"></td><td style="white-space: nowrap;">varchar</td><td style="text-align: center; width: 30px;">-</td><td>application user defined as current_setting('app.user')</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_application_name</td><td style="width: 5px;"></td><td style="white-space: nowrap;">varchar</td><td style="text-align: center; width: 30px;">-</td><td>application name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_query_text</td><td style="width: 5px;"></td><td style="white-space: nowrap;">text</td><td style="text-align: center; width: 30px;">-</td><td>SQL query text</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_statement_id</td><td style="width: 5px;"></td><td style="white-space: nowrap;">bigint</td><td style="text-align: center; width: 30px;">-</td><td>SQL statement ID referenced on pghist.hist_statement table</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[primary key column(s)]</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>primary key value (can be several)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[column(s) of fkey on master table]</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>foreign key value on master table (optional, can be several)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[column...]_old</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>old value for each column of table [schema].[table]</td></tr>
 </table>
-
 
 <br>
 Examples:<br>
-<div class="div-source-code border-color-div-source-code" style="height: 110px;">
+<div class="div-source-code border-color-div-source-code" style="height: 84px;">
 <pre><span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_hist;
 <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_hist <span class="color-source-sql-keyword">where</span> id=2;
 <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_hist <span class="color-source-sql-keyword">where</span> hist_operation=<span class="color-source-sql-string">'DELETE'</span>;
-
 </pre>
 </div>
 
@@ -520,58 +880,57 @@ Examples:<br>
 <div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
 
 
-
 <a id="table_changes"></a>
-<p style="font-size:larger;"><b>[schema].[table]_changes</b>(where_clause text, where_param anyelement, row_comment_clause text, cascade boolean)</p>
+<p style="font-size:larger;"><b>[schema].[table]_changes</b>(where_clause, where_param, columns_immutable, insert_detail, cascade)</p>
 <br>
-Function return changes in the table (setof pghist.table_change), created when history keeping is enabled.<br>
-Sorting by the first three columns provides chronology by time, 
-to get related data from multiple tables, recommended to use operator <em>union all</em>
+Function return changes in the table (setof pghist.table_change), created when history keeping is enabled.<br>Sorting by the first three columns provides chronology by time, to get related data from multiple tables, recommended to use operator <em>union all</em>
 <br>
 <br>
 Parameters:<br>
 <table>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">where_clause</td><td style="text-align: center; width: 30px;">-</td><td>condition on table (optional)</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">where_param</td><td style="text-align: center; width: 30px;">-</td><td>value of the parameter in where_clause (optional)</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">columns_immutable</td><td style="text-align: center; width: 30px;">-</td><td>return values of immutable columns (default  false)</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">insert_detail</td><td style="text-align: center; width: 30px;">-</td><td>detail INSERT operation by column (default false)</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">cascade</td><td style="text-align: center; width: 30px;">-</td><td>process inherited tables (default true)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">where_clause</td><td style="width: 5px;"></td><td style="white-space: nowrap;">text</td><td style="text-align: center; width: 30px;">-</td><td>condition on table (optional)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">where_param</td><td style="width: 5px;"></td><td style="white-space: nowrap;">anyelement</td><td style="text-align: center; width: 30px;">-</td><td>value of the parameter in where_clause (optional)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">columns_immutable</td><td style="width: 5px;"></td><td style="white-space: nowrap;">boolean</td><td style="text-align: center; width: 30px;">-</td><td>return values of immutable columns (default  false)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">insert_detail</td><td style="width: 5px;"></td><td style="white-space: nowrap;">boolean</td><td style="text-align: center; width: 30px;">-</td><td>detail INSERT operation by column (default false)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">cascade</td><td style="width: 5px;"></td><td style="white-space: nowrap;">boolean</td><td style="text-align: center; width: 30px;">-</td><td>process inherited tables (default true)</td></tr>
 </table>
-
-
 <br>
 Returned dataset columns:<br>
 <table>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">statement_num</td><td style="text-align: center; width: 30px;">-</td><td>common SQL statement number</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">row_num</td><td style="text-align: center; width: 30px;">-</td><td>row number in dataset that modified SQL statement</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_num</td><td style="text-align: center; width: 30px;">-</td><td>column number in row</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">timestamp</td><td style="text-align: center; width: 30px;">-</td><td>operation date-time</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">operation</td><td style="text-align: center; width: 30px;">-</td><td>operation: INSERT,UPDATE,DELETE,TRUNCATE</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">operation_name</td><td style="text-align: center; width: 30px;">-</td><td>operation name, specified by the overridden function pghist.hist_custom_operation_name</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_name</td><td style="text-align: center; width: 30px;">-</td><td>column name</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_comment</td><td style="text-align: center; width: 30px;">-</td><td>column comment</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">value_old</td><td style="text-align: center; width: 30px;">-</td><td>old value</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">value_old_desc</td><td style="text-align: center; width: 30px;">-</td><td>description of old value, can be overridden by the procedure pghist.hist_expression_value_desc</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">value_new</td><td style="text-align: center; width: 30px;">-</td><td>new value</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">value_new_desc</td><td style="text-align: center; width: 30px;">-</td><td>description of new value, can be overridden by the procedure pghist.hist_expression_value_desc</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">row_desc</td><td style="text-align: center; width: 30px;">-</td><td>description of row, can be overridden by the procedure pghist.hist_expression_row_desc</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">db_user</td><td style="text-align: center; width: 30px;">-</td><td>database user</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">db_user_name</td><td style="text-align: center; width: 30px;">-</td><td>database user name, specified by the overridden function pghist.hist_custom_db_user_name</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">app_user</td><td style="text-align: center; width: 30px;">-</td><td>application user, specified by the overridden function pghist.hist_custom_app_user</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">db_user_name</td><td style="text-align: center; width: 30px;">-</td><td>application user name, specified by the overridden function pghist.hist_custom_app_user_name</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">schema</td><td style="text-align: center; width: 30px;">-</td><td>schema</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">table_name</td><td style="text-align: center; width: 30px;">-</td><td>table name</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">table_comment</td><td style="text-align: center; width: 30px;">-</td><td>table comment</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">statement_num</td><td style="width: 5px;"></td><td style="white-space: nowrap;">bigint</td><td style="text-align: center; width: 30px;">-</td><td>common SQL statement number</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">row_num</td><td style="width: 5px;"></td><td style="white-space: nowrap;">int</td><td style="text-align: center; width: 30px;">-</td><td>row number in dataset that modified SQL statement</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_num</td><td style="width: 5px;"></td><td style="white-space: nowrap;">int</td><td style="text-align: center; width: 30px;">-</td><td>column number in row</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">timestamp</td><td style="width: 5px;"></td><td style="white-space: nowrap;">timestamptz</td><td style="text-align: center; width: 30px;">-</td><td>operation date-time</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">operation</td><td style="width: 5px;"></td><td style="white-space: nowrap;">varchar</td><td style="text-align: center; width: 30px;">-</td><td>operation: INSERT,UPDATE,DELETE,TRUNCATE</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">operation_name</td><td style="width: 5px;"></td><td style="white-space: nowrap;">varchar</td><td style="text-align: center; width: 30px;">-</td><td>operation name, specified by the overridden function pghist.hist_custom_operation_name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_name</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name</td><td style="text-align: center; width: 30px;">-</td><td>column name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_comment</td><td style="width: 5px;"></td><td style="white-space: nowrap;">varchar</td><td style="text-align: center; width: 30px;">-</td><td>column comment</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">value_old</td><td style="width: 5px;"></td><td style="white-space: nowrap;">text</td><td style="text-align: center; width: 30px;">-</td><td>old value</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">value_old_desc</td><td style="width: 5px;"></td><td style="white-space: nowrap;">text</td><td style="text-align: center; width: 30px;">-</td><td>description of old value, can be overridden by the procedure pghist.hist_expression_value_desc</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">value_new</td><td style="width: 5px;"></td><td style="white-space: nowrap;">text</td><td style="text-align: center; width: 30px;">-</td><td>new value</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">value_new_desc</td><td style="width: 5px;"></td><td style="white-space: nowrap;">text</td><td style="text-align: center; width: 30px;">-</td><td>description of new value, can be overridden by the procedure pghist.hist_expression_value_desc</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">row_desc</td><td style="width: 5px;"></td><td style="white-space: nowrap;">text</td><td style="text-align: center; width: 30px;">-</td><td>description of row, can be overridden by the procedure pghist.hist_expression_row_desc</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">db_user</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name</td><td style="text-align: center; width: 30px;">-</td><td>database user</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">db_user_name</td><td style="width: 5px;"></td><td style="white-space: nowrap;">varchar</td><td style="text-align: center; width: 30px;">-</td><td>database user name, specified by the overridden function pghist.hist_custom_db_user_name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">app_user</td><td style="width: 5px;"></td><td style="white-space: nowrap;">varchar</td><td style="text-align: center; width: 30px;">-</td><td>application user, specified by the overridden function pghist.hist_custom_app_user</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">db_user_name</td><td style="width: 5px;"></td><td style="white-space: nowrap;">varchar</td><td style="text-align: center; width: 30px;">-</td><td>application user name, specified by the overridden function pghist.hist_custom_app_user_name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">schema</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name</td><td style="text-align: center; width: 30px;">-</td><td>schema</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">table_name</td><td style="width: 5px;"></td><td style="white-space: nowrap;">varchar</td><td style="text-align: center; width: 30px;">-</td><td>table name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">table_comment</td><td style="width: 5px;"></td><td style="white-space: nowrap;">varchar</td><td style="text-align: center; width: 30px;">-</td><td>table comment</td></tr>
 </table>
-
 
 <br>
 Examples:<br>
-<div class="div-source-code border-color-div-source-code" style="height: 130px;">
-<pre><span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_changes();
-<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(<span class="color-source-sql-string">'id=&dollar;1'</span>,2)
-  <span class="color-source-sql-keyword">where</span> column_name <span class="color-source-sql-keyword">not</span> <span class="color-source-sql-keyword">in</span> (<span class="color-source-sql-string">'id'</span>,<span class="color-source-sql-string">'invoice_id'</span>)
-  <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> hist_id <span class="color-source-sql-keyword">desc</span>,column_pos
+<div class="div-source-code border-color-div-source-code" style="height: 192px;">
+<pre><span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes() <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(insert_detail=&#62;<span class="color-source-sql-keyword">true</span>, columns_immutable=&#62;<span class="color-source-sql-keyword">true</span>) <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3; 
+
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(<span class="color-source-sql-string">'id=12'</span>) <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
+
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(<span class="color-source-sql-string">'id=&dollar;1'</span>,12)
+<span class="color-source-sql-keyword">union</span> <span class="color-source-sql-keyword">all</span>
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(<span class="color-source-sql-string">'invoice_id=&dollar;1'</span>, 12)
+<span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
 </pre>
 </div>
 
@@ -579,22 +938,22 @@ Examples:<br>
 <div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
 
 
-
 <a id="table_at_timestamp"></a>
-<p style="font-size:larger;"><b>[schema].[table]_at_timestamp</b>(transaction_start timestamptz, cascade boolean)</p>
+<p style="font-size:larger;"><b>[schema].[table]_at_timestamp</b>(transaction_timestamp, cascade)</p>
 <br>
 Function created a temporary table [schema]_[table]_at_timestamp as copy of the original table at point in time and returns it
 <br>
 <br>
 Parameters:<br>
 <table>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">transaction_timestamp</td><td style="text-align: center; width: 30px;">-</td><td>date-time of transaction completion, default current_setting('pghist.at_timestamp')</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">cascade</td><td style="text-align: center; width: 30px;">-</td><td>process inherited tables (default true)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">schema</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>schema</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">table_name</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>table name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">transaction_timestamp</td><td style="width: 5px;"></td><td style="white-space: nowrap;">timestamptz</td><td style="text-align: center; width: 30px;">-</td><td>date-time of transaction completion, (optional, default current_setting(&#39;pghist.at_timestamp&#39;))</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">cascade</td><td style="width: 5px;"></td><td style="white-space: nowrap;">boolean</td><td style="text-align: center; width: 30px;">-</td><td>process inherited tables (optional, default true)</td></tr>
 </table>
-
 <br>
-Example:<br>
-<div class="div-source-code border-color-div-source-code" style="height: 175px;">
+Examples:<br>
+<div class="div-source-code border-color-div-source-code" style="height: 246px;">
 <pre><span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_at_timestamp(now()-<span class="color-source-sql-keyword">interval</span> <span class="color-source-sql-string">'1 hour'</span>);
 
 <span class="color-source-sql-keyword">do</span> &dollar;&dollar;
@@ -604,6 +963,9 @@ Example:<br>
   perform example.customer_at_timestamp();
 <span class="color-source-sql-keyword">end</span>; 
 &dollar;&dollar;;
+<span class="color-source-sql-keyword">select</span> * 
+  <span class="color-source-sql-keyword">from</span> example_invoice_at_timestamp i
+  <span class="color-source-sql-keyword">join</span> example_customer_at_timestamp c <span class="color-source-sql-keyword">on</span> c.id=i.customer_id;
 </pre>
 </div>
 
@@ -611,74 +973,45 @@ Example:<br>
 <div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
 
 
-
 <a id="hist_disable"></a>
-<p style="font-size:larger;"><b>pghist.hist_disable</b>(schema name, table_name name)</p>
+<p style="font-size:larger;"><b>pghist.hist_disable</b>(schema, table_name)</p>
 <br>
 Procedure disable keeping history of changes for table, delete the necessary objects
 <br>
 <br>
 Parameters:<br>
 <table>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">schema</td><td style="text-align: center; width: 30px;">-</td><td>table schema (optional)</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">table_name</td><td style="text-align: center; width: 30px;">-</td><td>table name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">schema</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name</td><td style="text-align: center; width: 30px;">-</td><td>schema (optional)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">table_name</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name</td><td style="text-align: center; width: 30px;">-</td><td>table name</td></tr>
 </table>
-
 <br>
-Example:<br>
-<div class="div-source-code border-color-div-source-code" style="height: 70px;">
+Examples:<br>
+<div class="div-source-code border-color-div-source-code" style="height: 66px;">
 <pre><span class="color-source-sql-keyword">call</span> pghist.hist_disable(<span class="color-source-sql-string">'document'</span>);
 <span class="color-source-sql-keyword">call</span> pghist.hist_disable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>);
 </pre>
 </div>
 
-
 <div style="height: 25px;"></div>
 <div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
-
 
 
 <a id="hist_expression_desc"></a>
 <p style="font-size:larger;"><b>SQL expressions of descriptions</b></p>
 <br>
-<b>pghist.hist_expression_row_desc</b>(schema name, table_name name, expression varchar)<br>
-<b>pghist.hist_expression_value_desc</b>(schema name, table_name name, column_name name, expression varchar)
-<br>
-<br>
-The procedures set expression to describe row or value of field.<br>
-Variable <em>$1</em> with row/field value is available in expression 
-<br>
-<br>
-<br>
-<b>pghist.hist_expression_row_desc_current</b>(schema name, table_name name)<br>
-<b>pghist.hist_expression_value_desc_current</b>(schema name, table_name name, column_name name)
-<br>
-<br>
-Functions return current expression to describe row or value of field
-<br>
-<br>
-<br>
-<b>pghist.hist_expression_row_desc_default</b>(schema name, table_name name)<br>
-<b>pghist.hist_expression_value_desc_default</b>(schema name, table_name name, column_name name)
-<br>
-<br>
-Functions return default expression to describe row or value of field.<br>
-For row, table comment with the primary key is returned.<br>
-For column that is foreign key, first text field of foreigned table is returned.
-<br>
+<b>pghist.hist_expression_row_desc</b>(schema, table_name, expression)<br><b>pghist.hist_expression_value_desc</b>(schema, table_name, column_name, expression)<br><br>The procedures set expression to describe row or value of field.<br>Variable <em>$1</em> with row/field value is available in expression<br><br><br><b>pghist.hist_expression_row_desc_current</b>(schema, table_name)<br><b>pghist.hist_expression_value_desc_current</b>(schema, table_name, column_name)<br><br>Functions return current expression to describe row or value of field<br><br><br><b>pghist.hist_expression_row_desc_default</b>(schema, table_name)<br><b>pghist.hist_expression_value_desc_default</b>(schema, table_name, column_name)<br><br>Functions return default expression to describe row or value of field.<br>For row, table comment with the primary key is returned.<br>For column that is foreign key, first text field of foreigned table is returned.<br>
 <br>
 <br>
 Parameters:<br>
 <table>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">schema</td><td style="text-align: center; width: 30px;">-</td><td>table schema</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">table</td><td style="text-align: center; width: 30px;">-</td><td>table name</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_name</td><td style="text-align: center; width: 30px;">-</td><td>column name</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">expression</td><td style="text-align: center; width: 30px;">-</td><td>expression, null discards the saved description</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">schema</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name</td><td style="text-align: center; width: 30px;">-</td><td>schema</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">table</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name</td><td style="text-align: center; width: 30px;">-</td><td>table name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_name</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name</td><td style="text-align: center; width: 30px;">-</td><td>column name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">expression</td><td style="width: 5px;"></td><td style="white-space: nowrap;">varchar</td><td style="text-align: center; width: 30px;">-</td><td>expression, null discards the saved description</td></tr>
 </table>
-
 <br>
 Examples:<br>
-<div class="div-source-code border-color-div-source-code" style="height: 130px;">
+<div class="div-source-code border-color-div-source-code" style="height: 138px;">
 <pre><span class="color-source-sql-keyword">call</span> pghist.hist_expression_row_desc(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>, <span class="color-source-sql-string">''</span><span class="color-source-sql-string">'Invoice'</span><span class="color-source-sql-string">''</span>);   
 <span class="color-source-sql-keyword">call</span> pghist.hist_expression_row_desc(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, &dollar;&dollar; <span class="color-source-sql-string">'Row #'</span>||&dollar;1.id||<span class="color-source-sql-string">' / '</span>||(<span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">name</span> <span class="color-source-sql-keyword">from</span> example.product <span class="color-source-sql-keyword">where</span> id=&dollar;1.product_id) &dollar;&dollar;);
 <span class="color-source-sql-keyword">call</span> pghist.hist_expression_value_desc(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, <span class="color-source-sql-string">'color'</span>, &dollar;&dollar; <span class="color-source-sql-keyword">case</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'R'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Red'</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'B'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Blue'</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'G'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Green'</span> <span class="color-source-sql-keyword">else</span> &dollar;1 <span class="color-source-sql-keyword">end</span> &dollar;&dollar;);
@@ -692,45 +1025,44 @@ Examples:<br>
 <div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
 
 
-
 <a id="hist_custom_funcs"></a>
 <p style="font-size:larger;"><b>Customization functions</b></p>
 <br>
-To customize and localize fields in a specific application, can be define custom functions.<br>
-Recommended to use the default function in SQL manager (such as pgAdmin or DBeaver),
-override it and save in application schema as different name.<br>
+To customize and localize fields in a specific application, can be define custom functions.<br>Recommended to use the default function in SQL manager (such as pgAdmin or DBeaver), override it and save in application schema as different name
 <br>
-Columns available for customization:
 <br>
+Columns available for customization:<br>
 <table>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">operation_name</td><td style="text-align: center; width: 30px;">-</td><td>operation name</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">db_user_name</td><td style="text-align: center; width: 30px;">-</td><td>database user name</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">app_user</td><td style="text-align: center; width: 30px;">-</td><td>application user</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">app_user_name</td><td style="text-align: center; width: 30px;">-</td><td>application user name</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">app_client_addr</td><td style="text-align: center; width: 30px;">-</td><td>client application IP address</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">app_client_hostname</td><td style="text-align: center; width: 30px;">-</td><td>client application host name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">operation_name</td><td style="width: 5px;"></td><td style="white-space: nowrap;">varchar</td><td style="text-align: center; width: 30px;">-</td><td>operation name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">db_user_name</td><td style="width: 5px;"></td><td style="white-space: nowrap;">varchar</td><td style="text-align: center; width: 30px;">-</td><td>database user name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">app_user</td><td style="width: 5px;"></td><td style="white-space: nowrap;">varchar</td><td style="text-align: center; width: 30px;">-</td><td>application user</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">app_user_name</td><td style="width: 5px;"></td><td style="white-space: nowrap;">varchar</td><td style="text-align: center; width: 30px;">-</td><td>application user name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">app_client_addr</td><td style="width: 5px;"></td><td style="white-space: nowrap;">inet</td><td style="text-align: center; width: 30px;">-</td><td>client application IP address</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">app_client_hostname</td><td style="width: 5px;"></td><td style="white-space: nowrap;">varchar</td><td style="text-align: center; width: 30px;">-</td><td>client application host name</td></tr>
 </table>
 
-<br>
 
-<p style="font-size:larger;"><b>pghist.hist_column_custom_function</b>(column_name name, custom_function name)<p>
+<br>
+<p style="font-size:larger;"><b>pghist.hist_column_custom_function</b>(column_name, custom_function)</p>
+<br>
 The procedure sets function to get column value
 <br>
 <br>
 Parameters:<br>
 <table>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_name</td><td style="text-align: center; width: 30px;">-</td><td>column name</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">custom_function</td><td style="text-align: center; width: 30px;">-</td><td>function name without parameters</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_name</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name</td><td style="text-align: center; width: 30px;">-</td><td>column name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">custom_function</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name</td><td style="text-align: center; width: 30px;">-</td><td>function name without parameters</td></tr>
 </table>
 
 <br>
-<p style="font-size:larger;"><b>pghist.hist_column_custom_function_current</b>(column_name name)<p>
+<p style="font-size:larger;"><b>pghist.hist_column_custom_function</b>(column_name)</p>
+<br>
 The function returns current function to get column value
 <br>
 <br>
 Parameter:<br>
 <table>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_name</td><td style="text-align: center; width: 30px;">-</td><td>column name</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">column_name</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name</td><td style="text-align: center; width: 30px;">-</td><td>column name</td></tr>
 </table>
 
 <br>
@@ -754,28 +1086,27 @@ Example:<br>
 <a id="hist_table"></a>
 <p style="font-size:larger;"><b>History table pghist.hist_data$[schema]_[table]</b></p>
 <br>
-History table is created in addition to the main table,
-developer (owner of main table) has access through the view <a href="#view_hist">[schema].[table]_hist</a>
+History table is created in addition to the main table, developer (owner of main table) has access through the view <a href="#view_hist">[schema].[table]_hist</a>
 <br>
 <br>
-Столбцы:<br>
+Columns:<br>
 <table>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_statement_id</td><td style="text-align: center; width: 30px;">-</td><td>SQL statement ID referenced on pghist.hist_statement table</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_row_num</td><td style="text-align: center; width: 30px;">-</td><td>row number in dataset that modified SQL statement</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_update_columns</td><td style="text-align: center; width: 30px;">-</td><td>changed columns for UPDATE operation</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[primary key column(s)]</td><td style="text-align: center; width: 30px;">-</td><td>primary key value (can be several)</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[column(s) of foreign key on master table]</td><td style="text-align: center; width: 30px;">-</td><td>foreign key value on master table (optional, can be several)</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[column...]_old</td><td style="text-align: center; width: 30px;">-</td><td>old value for each column of table [schema].[table]</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_statement_id</td><td style="width: 5px;"></td><td style="white-space: nowrap;">bigint</td><td style="text-align: center; width: 30px;">-</td><td>SQL statement ID referenced on pghist.hist_statement table</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_row_num</td><td style="width: 5px;"></td><td style="white-space: nowrap;">int</td><td style="text-align: center; width: 30px;">-</td><td>row number in dataset that modified SQL statement</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_update_columns</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name[]</td><td style="text-align: center; width: 30px;">-</td><td>changed columns for UPDATE operation</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[primary key column(s)]</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>primary key value (can be several)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[column(s) of fkey on master table]</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>foreign key value on master table (optional, can be several)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[column...]_old</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>old value for each column of table [schema].[table]</td></tr>
 </table>
 
 <br>
 Example:<br>
-<div class="div-source-code border-color-div-source-code" style="height: 130px;">
+<div class="div-source-code border-color-div-source-code" style="height: 120px;">
 <pre><span class="color-source-sql-keyword">select</span> *
   <span class="color-source-sql-keyword">from</span> pghist.hist_data&dollar;example_invoice h
   <span class="color-source-sql-keyword">join</span> pghist.hist_statement s <span class="color-source-sql-keyword">on</span> s.id=h.hist_statement_id
   <span class="color-source-sql-keyword">join</span> pghist.hist_query q <span class="color-source-sql-keyword">on</span> q.hash=s.query_hash
-  <span class="color-source-sql-keyword">where</span> q.<span class="color-source-sql-keyword">text</span> <span class="color-source-sql-keyword">like</span> <span class="color-source-sql-string">'do%begin%'</span>
+  <span class="color-source-sql-keyword">where</span> q.<span class="color-source-sql-keyword">text</span> <span class="color-source-sql-keyword">like</span> <span class="color-source-sql-string">'do%begin%'</span>;
 </pre>
 </div>
 
@@ -822,20 +1153,20 @@ Example:<br>
 </pre>
 </div>
 
+
 <div style="height: 25px;"></div>
 <div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
 
 
-
 <a id="pghist_version"></a>
-<p style="font-size:larger;"><b>pghist.pghist_version</b>()</p>
+<p style="font-size:larger;"><b>pghist.pghist_version</b></p>
 <br>
 The function returns tool version
 <br>
 
+
 <div style="height: 25px;"></div>
 <div class="background-menu-line" style="width: 100%; height: 2px; padding: 0px; margin-bottom: 15px;"></div>
-
 
 
 <a id="hist_sql_log"></a>
@@ -845,7 +1176,7 @@ All executed commands logging in table pghist.hist_sql_log
 <br>
 <br>
 Examples:<br>
-<div class="div-source-code border-color-div-source-code" style="height: 140px;">
+<div class="div-source-code border-color-div-source-code" style="height: 120px;">
 <pre><span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> pghist.hist_sql_log <span class="color-source-sql-keyword">where</span> <span class="color-source-sql-keyword">schema</span>=<span class="color-source-sql-string">'example'</span> <span class="color-source-sql-keyword">and</span> table_name=<span class="color-source-sql-string">'document'</span> <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> id;
 <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> pghist.hist_sql_log l
   <span class="color-source-sql-keyword">join</span> pghist.hist_transaction t <span class="color-source-sql-keyword">on</span> t.id=l.transaction_id
@@ -854,6 +1185,7 @@ Examples:<br>
 </pre>
 </div>
 
+<br>
 
 
   </div>

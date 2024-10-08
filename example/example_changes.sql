@@ -1,4 +1,4 @@
--- Developer create schema and tables, enable history, change default desc, grant privileges to user
+-- Create schema and tables
 drop schema if exists example cascade;
 create schema example;
 
@@ -43,15 +43,12 @@ comment on column example.invoice_product.quantity is 'Quantity';
 comment on column example.invoice_product.color is 'Color';
 create index on example.invoice_product(invoice_id);
 
-grant usage on schema example to user_1;  
-grant select,insert,update,delete on example.invoice,example.product,example.invoice_product to user_1;
-
+-- Enable history
 call pghist.hist_enable('example', 'invoice');
 call pghist.hist_enable('example', 'invoice_product', 'example', 'invoice');
 
-grant execute on function example.invoice_changes,example.invoice_product_changes to user_1;
 
--- User fills in tables, looks changes
+-- Change data
 insert into example.invoice values (12,'#20', current_date, 1, 120.00);
 update example.invoice set customer_id=2 where id=12;
 insert into example.product(id,name,code) values (101,'Pensil','030'),(102,'Notebook','040');
@@ -65,28 +62,20 @@ begin
 end; 
 $$;
 
--- Select full data, first three columns provide chronological
+-- Select all changes, first three columns provide chronological
 select * from example.invoice_changes() order by 1,2,3;
 
--- Select full data with column id (immutable), insert detail by columns  
+-- Select all changes with column id (immutable), insert detail by columns  
 select * from example.invoice_changes(insert_detail=>true, columns_immutable=>true) order by 1,2,3; 
 
--- Select partial data by id
+-- Select partial changes by id
 select * from example.invoice_changes('id=12') order by 1,2,3;
 
 -- Select changes in two related tables, fast execution provides index invoice_product(invoice_id)
 select * from example.invoice_changes('id=$1',12)
 union all
 select * from example.invoice_product_changes('invoice_id=$1', 12)
-order by 1,2,3
-
--- Developer create function that displays information in custom format for user
-create or replace function example.invoice_changes_ui(id int) returns setof pghist.table_change language sql security definer as $$
-  select * from example.invoice_changes('id=$1',id,insert_detail=>true)
-  union all
-  select * from example.invoice_product_changes('invoice_id=$1', id)
-  order by 1,2,3;
-$$;
+order by 1,2,3;
 
 -- Set description expression for columns row_desc and value_desc   
 call pghist.hist_expression_row_desc('example', 'invoice', '''Invoice''');   
@@ -98,10 +87,5 @@ create or replace function example.db_user_name(db_user name) returns varchar la
 begin 
   return '['||db_user||']';                                        
 end; $$;
-
 call pghist.hist_column_custom_function('db_user_name', 'example.db_user_name');
-
--- Select changes for user interface 
-select * from example.invoice_changes_ui(12);
-select timestamp,operation_name,db_user_name,row_desc,column_comment,value_old_desc,value_new_desc from example.invoice_changes_ui(12);
 

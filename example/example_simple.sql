@@ -9,7 +9,7 @@ create table example(
 -- Enable keeping history
 call pghist.hist_enable('example');
 
--- Change table
+-- Change data
 insert into example values (1, 'Example', 10, current_date);
 update example set number=20, date=date-1;
 

@@ -2,7 +2,7 @@ create schema if not exists pghist;
 
 create or replace function pghist.pghist_version() returns varchar language plpgsql as $$
 begin
-  return '24.3.9'; -- 2024.09.07 12:55:33
+  return '24.4.1'; -- 2024.10.08 19:06:44
 end; $$;
 
 create table if not exists pghist.hist_transaction(
@@ -79,7 +79,7 @@ do $$ begin
       value_new text,
       value_new_desc text,
       row_desc text,      
-      db_user varchar,
+      db_user name,
       db_user_name varchar,
       app_user varchar,
       app_user_name varchar,
@@ -90,7 +90,7 @@ do $$ begin
   end if;
 end $$;
 
-create or replace function pghist.hist_transaction_fn_commit() returns trigger language plpgsql as $$
+create or replace function pghist.hist_transaction_fn_commit() returns trigger security definer language plpgsql as $$
 begin
   update pghist.hist_transaction set timestamp_commit = clock_timestamp() where id=new.id;  
   return null;
@@ -247,18 +247,18 @@ declare
 begin
   for v_table in 	
     select t.schema,t.name 
-     from pg_event_trigger_ddl_commands() e
-	 join pg_class c on c.oid=e.objid     
-     join pghist.hist_table t on e.object_type in ('table','table column') and t.schema=quote_ident(e.schema_name) and t.name=quote_ident(c.relname) 
+      from pg_event_trigger_ddl_commands() e
+	  join pg_class c on c.oid=e.objid     
+      join pghist.hist_table t on e.object_type in ('table','table column') and t.schema=quote_ident(e.schema_name) and t.name=quote_ident(c.relname) 
   loop
     call pghist.hist_enable(v_table.schema, v_table.name);
   end loop;
   for v_table in 	
     select t.schema,t.name 
      from pg_event_trigger_ddl_commands() e
-      join pg_index i on i.indexrelid=e.objid
-      join pg_class c on c.oid=i.indrelid
-      join pghist.hist_table t on e.object_type in ('index') and t.schema=quote_ident(e.schema_name) and t.name=quote_ident(c.relname) 
+       join pg_index i on i.indexrelid=e.objid
+       join pg_class c on c.oid=i.indrelid
+       join pghist.hist_table t on e.object_type in ('index') and t.schema=quote_ident(e.schema_name) and t.name=quote_ident(c.relname) 
   loop
     call pghist.hist_enable(v_table.schema, v_table.name);
   end loop;
@@ -415,7 +415,6 @@ begin
     if v_columns_fkey_master_table is not null then
       call pghist.hist_execute_sql(v_schema, v_table_name, 'create index on '||v_hist_schema||'.'||v_hist_table_name||'('||pghist.hist_columns_to_text(v_columns_fkey_master_table)||')');
     end if; 
-    call pghist.hist_execute_sql(v_schema, v_table_name, 'grant select on '||v_hist_schema||'.hist_transaction,'||v_hist_schema||'.'||v_hist_table_name||' to '||v_table_owner);
     insert into pghist.hist_table(schema,name,columns_immutable,columns_excluded) values (v_schema,v_table_name,v_columns_immutable,v_columns_excluded);
     v_hist_table_oid := (v_hist_schema||'.'||v_hist_table_name)::regclass::oid;
   else
