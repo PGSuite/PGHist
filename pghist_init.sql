@@ -2,7 +2,7 @@ create schema if not exists pghist;
 
 create or replace function pghist.pghist_version() returns varchar language plpgsql as $$
 begin
-  return '24.4.1'; -- 2024.10.08 19:06:44
+  return '24.4.5'; -- 2024.11.06 18:19:27
 end; $$;
 
 create table if not exists pghist.hist_transaction(
@@ -40,7 +40,10 @@ create table if not exists pghist.hist_table(
   schema name,
   name name,
   primary key (schema,name),
-  columns_immutable name[] not null,
+  pkey name[] not null,
+  master_table_schema name, 
+  master_table_name name,
+  master_table_fkey name[],  
   columns_excluded name[] not null,
   expression_row_desc varchar
 );
@@ -175,6 +178,50 @@ begin
   return v_text;  
 end; $$;
 
+create or replace function pghist.hist_master_table_fkey(table_oid oid, master_table_schema name, master_table_name name) returns name[] language plpgsql as $$
+declare
+  v_fkey_out int[];
+  v_fkey_in int[];
+  v_master_pkey int[];
+  v_master_table_oid oid;
+  v_master_table_fkey name[];  
+begin	
+  if master_table_schema is null then 
+    return null;
+  end if;
+  v_master_table_oid := (master_table_schema||'.'||master_table_name)::regclass::oid;
+  select d.conkey,d.confkey,m.conkey master_pkey
+    into v_fkey_out,v_fkey_in,v_master_pkey
+    from pg_constraint d
+    join pg_constraint m on m.conrelid=d.confrelid and m.contype='p'
+    where d.contype='f' and d.conrelid=table_oid and d.confrelid=v_master_table_oid
+    order by d.conkey[1]
+    limit 1;
+  if v_fkey_out is null then
+    raise exception 'PGHIST-003 Not found foreign key on master table';
+  end if;      
+  return (
+    select array_agg(quote_ident(a.attname) order by master_pkey.pos)
+      from unnest(v_master_pkey) with ordinality master_pkey(num,pos)
+      join pg_attribute a on a.attrelid=table_oid and a.attnum=v_fkey_out[array_position(v_fkey_in, master_pkey.num)]
+  );    
+end; $$;
+
+create or replace function pghist.hist_columns_immutable(pkey name[], master_table_fkey name[]) returns name[] language plpgsql as $$
+declare
+  v_columns_immutable name[] := pkey;
+  v_col name; 
+begin
+  if master_table_fkey is not null then	
+    foreach v_col in array master_table_fkey loop
+      if not v_col=any(pkey) then
+        v_columns_immutable := v_columns_immutable||v_col;
+      end if;
+    end loop;
+  end if;   
+  return v_columns_immutable;  
+end; $$;
+
 create or replace procedure pghist.hist_enable(table_name name) security definer language plpgsql as $$
 declare
   v_schema name;
@@ -295,13 +342,15 @@ declare
   v_schema name := pghist.hist_ident(schema);
   v_table_name name := pghist.hist_ident(table_name);
   v_table_oid oid := (v_schema||'.'||v_table_name)::regclass::oid;
+  v_master_table_schema name := pghist.hist_ident(master_table_schema);
+  v_master_table_name name := pghist.hist_ident(master_table_name);
+  v_master_table_fkey name[];
   v_table_comment varchar := coalesce(quote_literal(col_description(v_table_oid, 0)),'null');
   v_table_owner name; 
-  v_children name[][]; 
+  v_tables_inherited name[][]; 
   v_columns_name name[];
   v_columns_type name[];
-  v_columns_pkey name[];
-  v_columns_fkey_master_table name[];
+  v_columns_pkey name[];  
   v_columns_immutable name[];
   v_columns_excluded name[];
   v_columns_value name[];
@@ -361,7 +410,7 @@ begin
     raise exception 'PGHIST-002 Table does not have primary key';
   end if;       
   select array_agg(array[child_schema,child_table_name] order by child_schema,child_table_name)
-    into v_children
+    into v_tables_inherited
     from (
       select quote_ident(n.nspname) child_schema, quote_ident(c.relname) child_table_name 
         from pg_inherits i
@@ -372,29 +421,8 @@ begin
     join pghist.hist_table t on t.schema=child_schema and t.name=child_table_name; 
   --   
   if not v_hist_exists then
-    v_columns_immutable := v_columns_pkey;
-    if master_table_schema is not null and master_table_name is not null then
-      select (
-        select array_agg(quote_ident(attname) order by col_pos)
-          from unnest(conkey) with ordinality col(col_num,col_pos)
-          join pg_attribute on attrelid=conrelid and attnum=col_num
-        )  
-        into v_columns_fkey_master_table
-        from pg_constraint   
-        where contype='f' and conrelid=v_table_oid and confrelid=(master_table_schema||'.'||master_table_name)::regclass::oid
-        order by conkey[1]
-        limit 1;
-      if v_columns_fkey_master_table is null then
-        raise exception 'PGHIST-003 Not found foreign key on master table';
-      end if;
-      foreach v_col in array v_columns_fkey_master_table loop
-        if not v_col=any(v_columns_immutable) then
-          v_columns_immutable := v_columns_immutable||v_col;
-        end if;
-      end loop;
-    else
-      v_columns_fkey_master_table := null;      
- 	end if;
+    v_master_table_fkey := pghist.hist_master_table_fkey(v_table_oid, v_master_table_schema, v_master_table_name);
+    v_columns_immutable := pghist.hist_columns_immutable(v_columns_pkey, v_master_table_fkey);
     v_sql :=
       'create table '||v_hist_schema||'.'||v_hist_table_name||' ('||v_newline||
       '  hist_statement_id bigint not null, -- references '||v_hist_schema||'.hist_statement(id) on delete cascade,'||v_newline||
@@ -412,14 +440,15 @@ begin
       'insert into '||v_hist_schema||'.'||v_hist_table_name||' (hist_statement_id,hist_row_num,'||pghist.hist_columns_to_text(v_columns_immutable)||')'||v_newline||   
       '  select '||pghist.hist_statement_id('HIST_ENABLE')||',row_number() over (),'||pghist.hist_columns_to_text(v_columns_immutable)||' from only '||v_schema||'.'||v_table_name;
     call pghist.hist_execute_sql(v_schema, v_table_name, v_sql);
-    if v_columns_fkey_master_table is not null then
-      call pghist.hist_execute_sql(v_schema, v_table_name, 'create index on '||v_hist_schema||'.'||v_hist_table_name||'('||pghist.hist_columns_to_text(v_columns_fkey_master_table)||')');
-    end if; 
-    insert into pghist.hist_table(schema,name,columns_immutable,columns_excluded) values (v_schema,v_table_name,v_columns_immutable,v_columns_excluded);
+    if v_master_table_fkey is not null then
+      call pghist.hist_execute_sql(v_schema, v_table_name, 'create index on '||v_hist_schema||'.'||v_hist_table_name||'('||pghist.hist_columns_to_text(v_master_table_fkey)||')');
+    end if;    
+    insert into pghist.hist_table(schema,name,pkey,master_table_schema,master_table_name,master_table_fkey,columns_excluded)
+      values (v_schema,v_table_name,v_columns_pkey,v_master_table_schema,v_master_table_name,v_master_table_fkey,v_columns_excluded);
     v_hist_table_oid := (v_hist_schema||'.'||v_hist_table_name)::regclass::oid;
   else
     v_hist_table_oid := (v_hist_schema||'.'||v_hist_table_name)::regclass::oid;
-    v_columns_immutable := (select columns_immutable from pghist.hist_table where hist_table.schema=v_schema and hist_table.name=v_table_name);
+    v_columns_immutable := (select pghist.hist_columns_immutable(pkey,master_table_fkey) from pghist.hist_table where hist_table.schema=v_schema and hist_table.name=v_table_name); 
     for v_rec in
 	  select quote_ident(attname) column_name
 	    from pg_attribute
@@ -556,9 +585,16 @@ begin
   call pghist.hist_execute_sql(v_schema, v_table_name, v_sql);
   call pghist.hist_execute_sql(v_schema, v_table_name, 'grant select on '||v_schema||'.'||v_view_hist||' to '||v_table_owner||' with grant option'); 
   --
-  v_sql_hist_to_row := pghist.hist_columns_to_text(v_columns_immutable,$$ 'v_row.'||col||' := v_hist.'||col||';' $$,' ')||pghist.hist_columns_to_text(v_columns_value,$$ ' v_row.'||col||' := v_hist.'||pghist.hist_ident('',col,'_old')||';' $$,''); 
-  v_sql := 
-    'create or replace function '||v_schema||'.'||v_func_changes||'(where_clause text default null, where_param anyelement default null::varchar, columns_immutable boolean default false, insert_detail boolean default false, cascade boolean default true) returns setof pghist.table_change language plpgsql security definer as $func$'||v_newline||
+  v_sql_hist_to_row := pghist.hist_columns_to_text(v_columns_immutable,$$ 'v_row.'||col||' := v_hist.'||col||';' $$,' ')||pghist.hist_columns_to_text(v_columns_value,$$ ' v_row.'||col||' := v_hist.'||pghist.hist_ident('',col,'_old')||';' $$,'');    
+  v_sql := 'create or replace function '||v_schema||'.'||v_func_changes||'(';
+  v_sql_part := 'where true''||'; 
+  for v_i in 1..array_length(v_columns_immutable,1) loop
+    v_col := v_columns_immutable[v_i];     
+    v_sql := v_sql||v_col||' '||v_columns_type[array_position(v_columns_name,v_col)]||' default null, ';
+    v_sql_part := v_sql_part||'case when '||v_col||' is not null then '' and d.'||v_col||'=$'||v_i||''' else '''' end||';
+  end loop; 
+  v_sql_part := v_sql_part||'''';
+  v_sql := v_sql||'hist_columns_immutable boolean default false, hist_columns_insert boolean default false, hist_tables_detail boolean default true, hist_tables_inherited boolean default true) returns setof pghist.table_change language plpgsql security definer as $func$'||v_newline||
     'declare'||v_newline||
     '  v_row '||v_schema||'.'||v_table_name||'%rowtype;'||v_newline||    
     '  v_change pghist.table_change;'||v_newline||
@@ -569,19 +605,19 @@ begin
     '  v_change.table_name := '''||v_table_name||''';'||v_newline||
     '  v_change.table_comment := '||v_table_comment||';'||v_newline||   
     '  open v_cur_hist for execute'||v_newline||
-    '    ''select reverse(s.hist_statement_id::varchar)::bigint hist_statement_num,hist_row_num,hist_timestamp,hist_operation,hist_db_user,hist_app_user,hist_update_columns,'||v_newline||
-    '            '||pghist.hist_columns_to_text(v_columns_immutable)||pghist.hist_columns_to_text(v_columns_value_old,$$ ','||col $$,'')||v_newline||
-    '       from '||v_hist_schema||'.'||v_hist_table_name||' h'||v_newline||
-    '       join (select id hist_statement_id, transaction_id hist_transaction_id, operation hist_operation,timestamp hist_timestamp from pghist.hist_statement) s on s.hist_statement_id=h.hist_statement_id'||v_newline||
-    '       join (select id hist_transaction_id, db_user hist_db_user, app_user hist_app_user from pghist.hist_transaction) t on t.hist_transaction_id=s.hist_transaction_id '''||v_newline||
-    '       ||coalesce(''where ''||where_clause||'' '', '''')||'||v_newline||
-    '    ''union all ''||'||v_newline||
-    '    ''select null,null,null,null,null,null,null,'||v_newline||
+    '    ''select reverse(s.id::varchar)::bigint hist_statement_num,d.hist_row_num,s.timestamp hist_timestamp,s.operation hist_operation,t.db_user hist_db_user,t.app_user hist_app_user,d.hist_update_columns,'||v_newline||
+    '            '||pghist.hist_columns_to_text(v_columns_immutable,$$ 'd.'||col $$)||pghist.hist_columns_to_text(v_columns_value_old,$$ ',d.'||col $$,'')||v_newline||
+    '       from '||v_hist_schema||'.'||v_hist_table_name||' d'||v_newline||
+    '       join pghist.hist_statement s on s.id=d.hist_statement_id'||v_newline||
+    '       join pghist.hist_transaction t on t.id=s.transaction_id'||v_newline||
+    '       '||v_sql_part||v_newline||
+    '     union all'||v_newline||
+    '     select null,null,null,null,null,null,null,'||v_newline||
     '            '||pghist.hist_columns_to_text(v_columns_immutable)||pghist.hist_columns_to_text(v_columns_value,$$ ','||col $$,'')||v_newline||
-    '       from only '||v_schema||'.'||v_table_name||' '''||v_newline||
-    '       ||coalesce(''where ''||where_clause||'' '', '''')||'||v_newline||
-    '    ''order by '||pghist.hist_columns_to_text(v_columns_pkey)||',hist_statement_num desc'''||v_newline||
-    '    using where_param;'||v_newline||
+    '       from only '||v_schema||'.'||v_table_name||' d'||v_newline||
+    '       '||v_sql_part||v_newline||
+    '     order by '||pghist.hist_columns_to_text(v_columns_pkey)||',hist_statement_num desc'''||v_newline||
+    '    using '||pghist.hist_columns_to_text(v_columns_immutable)||';'||v_newline||
     '  loop'||v_newline||
     '    fetch v_cur_hist into v_hist;'||v_newline||
     '    exit when not found;'||v_newline||
@@ -601,11 +637,11 @@ begin
     '    if v_hist.hist_operation in (''HIST_ENABLE'',''INSERT'') then'||v_newline||
     '      v_change.value_old := null; v_change.value_old_desc := null;'||v_newline||
     '      '||v_row_desc_expr||v_newline||
-    '      if insert_detail then'||v_newline;   
+    '      if hist_columns_insert then'||v_newline;   
   for v_i in 1..array_length(v_columns_name,1) loop
     v_col := v_columns_name[v_i];
     if v_col=any(v_columns_immutable) then 
-      v_sql := v_sql||'        if columns_immutable then'||v_newline;
+      v_sql := v_sql||'        if hist_columns_immutable then'||v_newline;
     else    
       v_sql := v_sql||'        if v_row.'||v_col||' is not null then'||v_newline;
     end if;
@@ -650,7 +686,7 @@ begin
   for v_i in 1..array_length(v_columns_name,1) loop
     v_col := v_columns_name[v_i];
     if v_col=any(v_columns_immutable) then 
-      v_sql := v_sql||'      if columns_immutable then'||v_newline;
+      v_sql := v_sql||'      if hist_columns_immutable then'||v_newline;
     else    
       v_sql := v_sql||'      if v_hist.'||pghist.hist_ident('',v_col,'_old')||' is not null then'||v_newline;
     end if;
@@ -665,14 +701,28 @@ begin
     '    end if;'||v_newline||    
     '  end loop;'||v_newline||
     '  close v_cur_hist;'||v_newline;
-  if v_children is not null then    
-    v_sql := v_sql||'  if cascade then'||v_newline;
-    for v_i in 1..array_length(v_children, 1) loop
+  if v_tables_inherited is not null then    
+    v_sql := v_sql||'  if hist_tables_inherited then'||v_newline;
+    for v_i in 1..array_length(v_tables_inherited, 1) loop
       v_sql := v_sql||
-        '    for v_change in (select * from  '||v_children[v_i][1]||'.'||pghist.hist_ident_table('',v_children[v_i][2],'_changes')||'(where_clause, where_param, columns_immutable, insert_detail, cascade)) loop'||v_newline||
+        '    for v_change in (select * from '||v_tables_inherited[v_i][1]||'.'||pghist.hist_ident('',v_tables_inherited[v_i][2],'_changes')||'(where_clause, where_param, hist_columns_immutable, hist_columns_insert, hist_tables_detail, hist_tables_inherited)) loop'||v_newline||
         '      return next v_change;'||v_newline||
         '    end loop;'||v_newline;
     end loop;   
+    v_sql := v_sql||'  end if;'||v_newline;
+  end if;
+  if exists (select from pghist.hist_table td where td.master_table_schema=v_schema and td.master_table_name=v_table_name) then
+    v_sql := v_sql||'  if hist_tables_detail then'||v_newline;
+    for v_rec in
+      select td.schema,td.name,td.master_table_fkey,pghist.hist_columns_immutable(td.pkey, td.master_table_fkey) columns_immutable from pghist.hist_table td where td.master_table_schema=v_schema and td.master_table_name=v_table_name
+    loop
+      v_sql := v_sql||
+        '    for v_change in (select * from '||v_rec.schema||'.'||pghist.hist_ident('',v_rec.name,'_changes')||'('||
+        (select string_agg(coalesce(v_columns_pkey[array_position(v_rec.master_table_fkey,col)],'null'), ', ') from unnest(v_rec.columns_immutable) col)||
+        ', hist_columns_immutable, hist_columns_insert, hist_tables_detail, hist_tables_inherited)) loop'||v_newline||
+        '      return next v_change;'||v_newline||
+        '    end loop;'||v_newline;
+    end loop;
     v_sql := v_sql||'  end if;'||v_newline;
   end if; 
   v_sql := v_sql||    
@@ -683,7 +733,7 @@ begin
   -- 
   v_temp_table_at_timestamp := pghist.hist_ident_table('', v_schema, v_func_at_timestamp);
   v_sql :=
-    'create or replace function '||v_schema||'.'||v_func_at_timestamp||'(transaction_timestamp timestamptz default current_setting(''pghist.at_timestamp'')::timestamptz, cascade boolean default true) returns setof '||v_schema||'.'||v_table_name||' security definer language plpgsql as $func$'||v_newline||
+    'create or replace function '||v_schema||'.'||v_func_at_timestamp||'(transaction_timestamp timestamptz default current_setting(''pghist.at_timestamp'')::timestamptz, tables_inherited boolean default true) returns setof '||v_schema||'.'||v_table_name||' security definer language plpgsql as $func$'||v_newline||
     'declare'||v_newline||
     '  v_row '||v_schema||'.'||v_table_name||'%rowtype;'||v_newline||
     '  v_hist record;'||v_newline||
@@ -730,13 +780,13 @@ begin
     '    end if;'||v_newline||
     '  end loop;'||v_newline||
     '  close v_cur_hist;'||v_newline;
-  if v_children is not null then    
-    v_sql := v_sql||'  if cascade then'||v_newline;
-    for v_i in 1..array_length(v_children, 1) loop
+  if v_tables_inherited is not null then    
+    v_sql := v_sql||'  if tables_inherited then'||v_newline;
+    for v_i in 1..array_length(v_tables_inherited, 1) loop
       v_sql := v_sql||
         '    insert into '||v_temp_table_at_timestamp||v_newline||
         '      select '||pghist.hist_columns_to_text(v_columns_name)||v_newline||
-        '         from '||v_children[v_i][1]||'.'||pghist.hist_ident('',v_children[v_i][2],'_at_timestamp')||'(transaction_timestamp, cascade);'||v_newline;
+        '         from '||v_tables_inherited[v_i][1]||'.'||pghist.hist_ident('',v_tables_inherited[v_i][2],'_at_timestamp')||'(transaction_timestamp, tables_inherited);'||v_newline;
     end loop;   
     v_sql := v_sql||'  end if;'||v_newline;
   end if; 
