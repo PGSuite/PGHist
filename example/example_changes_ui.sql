@@ -1,8 +1,17 @@
--- Create function that returns all columns, including unnecessary
+-- Create function that returns changes by date
+create or replace function example.invoice_changes_ui_date(date_changes date) returns setof pghist.table_change language sql security definer as $$
+  select c.*
+    from (select distinct id from example.invoice_hist where hist_timestamp::date=date_changes) h
+    cross join example.invoice_changes(h.id) c
+  order by 1,2,3;
+$$;
+select * from example.invoice_changes_ui_date(current_date);
+
+-- Create function that returns changes to master and detail tables
 create or replace function example.invoice_changes_ui_simple(id int) returns setof pghist.table_change language sql security definer as $$
-  select * from example.invoice_changes('id=$1',id,insert_detail=>true)
+  select * from example.invoice_changes(id=>id,hist_tables_detail=>false,hist_columns_insert=>true)
   union all
-  select * from example.invoice_product_changes('invoice_id=$1', id)
+  select * from example.invoice_product_changes(invoice_id=>id)
   order by 1,2,3;
 $$;
 select * from example.invoice_changes_ui_simple(12);
@@ -27,9 +36,9 @@ create cast(pghist.table_change as example.table_change_ui) with function exampl
 -- Create function that returns only necessary columns
 create or replace function example.invoice_changes_ui(id int) returns setof example.table_change_ui language sql security definer as $$
   select tc::pghist.table_change::example.table_change_ui from ( 
-    select * from example.invoice_changes('id=$1',id,insert_detail=>true)
+    select * from example.invoice_changes(id=>id,hist_tables_detail=>false,hist_columns_insert=>true)
     union all
-    select * from example.invoice_product_changes('invoice_id=$1', id)
+    select * from example.invoice_product_changes(invoice_id=>id)
     order by 1,2,3
   ) tc;  
 $$;

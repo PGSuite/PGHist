@@ -174,8 +174,7 @@ a, a:link, a:active, a:visited {
 
 .div-content-body {
     #border: solid 3px blue;
-    #margin-left: 270px;
-    padding: 10px;
+    padding: 10px 30px 10px 10px;
     border-left-style: solid;
     border-left-width: 2px;
 }
@@ -377,6 +376,7 @@ a, a:link, a:active, a:visited {
 
     .div-content-body {
         border-left-width: 0px;
+        padding: 5px;
     }
 
     .div-video-iframe {
@@ -531,7 +531,10 @@ cсылка на общую транзацию - изменения в друг�
 <br><br>
 Отображать пользователю идентификаторы и внешние ключи неинформативно, поэтому для каждой строки и значений полей выводится описание, которое можно переопределить через <a href="#hist_expression_desc">SQL-выражение</a>.
 По умолчанию для строки возращается комментарий таблицы с первичным ключом, для столбца, являющегося внешним ключом, - первое текстовое поле связанной таблицы,
-дла остальных - значение. Таким образом, отображать пользователю можно не значения, а описания. 
+для остальных - значение. Таким образом, отображать пользователю можно не значения, а описания. 
+<br><br>
+При включении истории для detail-таблиц необходимо указать master-таблицу, это приведет к дополнительному хранению и индексированию полей внешнего ключа аналогично первичному.
+По умолчанию при получении изменений в master-таблице будут возвращаются и изменения в detail-таблицах.
 <br><br>
 Часть столбцов (например, имя пользователя) могу быть переопределены через <a href="#hist_custom_funcs">функции кастомизации</a>.
 <br><br>
@@ -586,7 +589,6 @@ cсылка на общую транзацию - изменения в друг�
 <span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>);
 <span class="color-source-sql-keyword">call</span> pghist.hist_enable(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, <span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>);
 
-
 <span class="color-source-sql-comment">-- Change data</span>
 <span class="color-source-sql-keyword">insert</span> <span class="color-source-sql-keyword">into</span> example.invoice <span class="color-source-sql-keyword">values</span> (12,<span class="color-source-sql-string">'#20'</span>, <span class="color-source-sql-keyword">current_date</span>, 1, 120.00);
 <span class="color-source-sql-keyword">update</span> example.invoice <span class="color-source-sql-keyword">set</span> customer_id=2 <span class="color-source-sql-keyword">where</span> id=12;
@@ -604,16 +606,16 @@ cсылка на общую транзацию - изменения в друг�
 <span class="color-source-sql-comment">-- Select all changes, first three columns provide chronological</span>
 <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes() <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
 
-<span class="color-source-sql-comment">-- Select all changes with column id (immutable), insert detail by columns  </span>
-<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(insert_detail=&#62;<span class="color-source-sql-keyword">true</span>, columns_immutable=&#62;<span class="color-source-sql-keyword">true</span>) <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3; 
+<span class="color-source-sql-comment">-- Select all changes with column id (immutable), insert detail by columns, without detail table example.invoice_product</span>
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(hist_columns_insert=&#62;<span class="color-source-sql-keyword">true</span>, hist_columns_immutable=&#62;<span class="color-source-sql-keyword">true</span>, hist_tables_detail=&#62;<span class="color-source-sql-keyword">false</span>) <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3; 
 
-<span class="color-source-sql-comment">-- Select partial changes by id</span>
-<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(<span class="color-source-sql-string">'id=12'</span>) <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
+<span class="color-source-sql-comment">-- Select partial changes by id with detail table, autocreated indexes provide fast execution</span>
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(12) <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
 
-<span class="color-source-sql-comment">-- Select changes in two related tables, fast execution provides index invoice_product(invoice_id)</span>
-<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(<span class="color-source-sql-string">'id=&dollar;1'</span>,12)
+<span class="color-source-sql-comment">-- Equivalent with using union all  </span>
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(id=&#62;12, hist_tables_detail=&#62;<span class="color-source-sql-keyword">false</span>)
 <span class="color-source-sql-keyword">union</span> <span class="color-source-sql-keyword">all</span>
-<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(<span class="color-source-sql-string">'invoice_id=&dollar;1'</span>, 12)
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(invoice_id=&#62;12)
 <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
 
 <span class="color-source-sql-comment">-- Set description expression for columns row_desc and value_desc   </span>
@@ -630,20 +632,29 @@ cсылка на общую транзацию - изменения в друг�
 </pre>
 </div>
 <br>
+Изменения по опредленному условию можно получить используя <em>cross join</em> со списком первичных ключей.
 Для объединения истории по нескольким таблицам результаты функций можно объединять через оператор <em>union all</em>.
-Наиболее актуально это для detail-таблиц, поэтому при включении для них истории необходимо указать master-таблицу,
-что приведет к дополнительному хранению и индексированию полей внешнего ключа аналогично первичному.
+Для подобных запросов рекомендуется создавать функции-обертки.
 <br><br>
 Для схем данных со сложной структурой рекомендуется создавать функции [schema].[table]_changes_ui(id), которые будут возвращать необходимый набор данных.
-Для приложения или проекта можно создать один единый данных table_changes_ui и одну экранную форму (web-страницу) для отображения истории по любой таблице.
+Для приложения или проекта можно создать один единый тип данных table_changes_ui и одну экранную форму (web-страницу) для отображения истории по любым таблицам и условиям.
 <br><br>
 Пример:<br>
 <div class="div-source-code border-color-div-source-code" style="height: 250px;">
-<pre><span class="color-source-sql-comment">-- Create function that returns all columns, including unnecessary</span>
+<pre><span class="color-source-sql-comment">-- Create function that returns changes by date</span>
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.invoice_changes_ui_date(date_changes date) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">setof</span> pghist.table_change <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">sql</span> <span class="color-source-sql-keyword">security</span> <span class="color-source-sql-keyword">definer</span> <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
+  <span class="color-source-sql-keyword">select</span> c.*
+    <span class="color-source-sql-keyword">from</span> (<span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">distinct</span> id <span class="color-source-sql-keyword">from</span> example.invoice_hist <span class="color-source-sql-keyword">where</span> hist_timestamp::date=date_changes) h
+    <span class="color-source-sql-keyword">cross</span> <span class="color-source-sql-keyword">join</span> example.invoice_changes(h.id) c
+  <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
+&dollar;&dollar;;
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes_ui_date(<span class="color-source-sql-keyword">current_date</span>);
+
+<span class="color-source-sql-comment">-- Create function that returns changes to master and detail tables</span>
 <span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.invoice_changes_ui_simple(id <span class="color-source-sql-keyword">int</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">setof</span> pghist.table_change <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">sql</span> <span class="color-source-sql-keyword">security</span> <span class="color-source-sql-keyword">definer</span> <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
-  <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(<span class="color-source-sql-string">'id=&dollar;1'</span>,id,insert_detail=&#62;<span class="color-source-sql-keyword">true</span>)
+  <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(id=&#62;id,hist_tables_detail=&#62;<span class="color-source-sql-keyword">false</span>,hist_columns_insert=&#62;<span class="color-source-sql-keyword">true</span>)
   <span class="color-source-sql-keyword">union</span> <span class="color-source-sql-keyword">all</span>
-  <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(<span class="color-source-sql-string">'invoice_id=&dollar;1'</span>, id)
+  <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(invoice_id=&#62;id)
   <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
 &dollar;&dollar;;
 <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes_ui_simple(12);
@@ -668,9 +679,9 @@ cсылка на общую транзацию - изменения в друг�
 <span class="color-source-sql-comment">-- Create function that returns only necessary columns</span>
 <span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.invoice_changes_ui(id <span class="color-source-sql-keyword">int</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">setof</span> example.table_change_ui <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">sql</span> <span class="color-source-sql-keyword">security</span> <span class="color-source-sql-keyword">definer</span> <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
   <span class="color-source-sql-keyword">select</span> tc::pghist.table_change::example.table_change_ui <span class="color-source-sql-keyword">from</span> ( 
-    <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(<span class="color-source-sql-string">'id=&dollar;1'</span>,id,insert_detail=&#62;<span class="color-source-sql-keyword">true</span>)
+    <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(id=&#62;id,hist_tables_detail=&#62;<span class="color-source-sql-keyword">false</span>,hist_columns_insert=&#62;<span class="color-source-sql-keyword">true</span>)
     <span class="color-source-sql-keyword">union</span> <span class="color-source-sql-keyword">all</span>
-    <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(<span class="color-source-sql-string">'invoice_id=&dollar;1'</span>, id)
+    <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(invoice_id=&#62;id)
     <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3
   ) tc;  
 &dollar;&dollar;;
@@ -864,8 +875,8 @@ cсылка на общую транзацию - изменения в друг�
   <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_application_name</td><td style="width: 5px;"></td><td style="white-space: nowrap;">varchar</td><td style="text-align: center; width: 30px;">-</td><td>имя приложения</td></tr>
   <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_query_text</td><td style="width: 5px;"></td><td style="white-space: nowrap;">text</td><td style="text-align: center; width: 30px;">-</td><td>текст SQL-запроса</td></tr>
   <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_statement_id</td><td style="width: 5px;"></td><td style="white-space: nowrap;">bigint</td><td style="text-align: center; width: 30px;">-</td><td>ID SQL-выражения, ссылается на таблицу pghist.hist_statement</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[primary key column(s)]</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>значение первичного ключа (можно быть несколько)</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[column(s) of fkey on master table]</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>значение внешного ключа на мастер-таблицу (необязательно, можно быть несколько)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[primary key column(s)]</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>значение первичного ключа (может быть несколько)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[column(s) of fkey on master table]</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>значение внешнего ключа на мастер-таблицу (необязательный, может быть несколько)</td></tr>
   <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[column...]_old</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>старое значение для каждого столбца таблицы [schema].[table]</td></tr>
 </table>
 
@@ -883,18 +894,19 @@ cсылка на общую транзацию - изменения в друг�
 
 
 <a id="table_changes"></a>
-<p style="font-size:larger;"><b>[schema].[table]_changes</b>(where_clause, where_param, columns_immutable, insert_detail, cascade)</p>
+<p style="font-size:larger;"><b>[schema].[table]_changes</b>(hist_columns_immutable, hist_columns_insert, hist_tables_detail, hist_tables_inherited)</p>
 <br>
 Функция возвращает изменения в таблице (setof pghist.table_change), создается при включении ведения истории.<br>Сортировка по первым трем столбцам обеспечивает хронологию по времени, для получения связанных данных из нескольких таблиц рекомендуется использовать оператор <em>union all</em>
 <br>
 <br>
 Параметры:<br>
 <table>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">where_clause</td><td style="width: 5px;"></td><td style="white-space: nowrap;">text</td><td style="text-align: center; width: 30px;">-</td><td>условие на таблицу (необязательный)</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">where_param</td><td style="width: 5px;"></td><td style="white-space: nowrap;">anyelement</td><td style="text-align: center; width: 30px;">-</td><td>значение параметра в where_clause (необязательный)</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">columns_immutable</td><td style="width: 5px;"></td><td style="white-space: nowrap;">boolean</td><td style="text-align: center; width: 30px;">-</td><td>возвращать значения неизменямых столбцов (необязательный, по умолчанию false)</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">insert_detail</td><td style="width: 5px;"></td><td style="white-space: nowrap;">boolean</td><td style="text-align: center; width: 30px;">-</td><td>детализировать операцию INSERT по столбцам (необязательный, по умолчанию false)</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">cascade</td><td style="width: 5px;"></td><td style="white-space: nowrap;">boolean</td><td style="text-align: center; width: 30px;">-</td><td>учитывать унаследованные таблицы (необязательный, по умолчанию true)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[primary key column(s)]</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>значение первичного ключа (необязательный, может быть несколько)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[column(s) of fkey on master table]</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>значение внешнего ключа на мастер-таблицу (необязательный, может быть несколько)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_columns_immutable</td><td style="width: 5px;"></td><td style="white-space: nowrap;">boolean</td><td style="text-align: center; width: 30px;">-</td><td>возвращать значения неизменямых столбцов (необязательный, по умолчанию false)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_columns_insert</td><td style="width: 5px;"></td><td style="white-space: nowrap;">boolean</td><td style="text-align: center; width: 30px;">-</td><td>детализировать операцию INSERT по столбцам (необязательный, по умолчанию false)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_tables_detail</td><td style="width: 5px;"></td><td style="white-space: nowrap;">boolean</td><td style="text-align: center; width: 30px;">-</td><td>возвращать изменения в detail-таблицах (необязательный, по умолчанию true)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_tables_inherited</td><td style="width: 5px;"></td><td style="white-space: nowrap;">boolean</td><td style="text-align: center; width: 30px;">-</td><td>учитывать унаследованные таблицы (необязательный, по умолчанию true)</td></tr>
 </table>
 <br>
 Столбцы возвращаемого набора данных:<br>
@@ -925,13 +937,13 @@ cсылка на общую транзацию - изменения в друг�
 Примеры использования:<br>
 <div class="div-source-code border-color-div-source-code" style="height: 192px;">
 <pre><span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes() <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
-<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(insert_detail=&#62;<span class="color-source-sql-keyword">true</span>, columns_immutable=&#62;<span class="color-source-sql-keyword">true</span>) <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3; 
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(hist_columns_immutable=&#62;<span class="color-source-sql-keyword">true</span>) <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3; 
 
-<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(<span class="color-source-sql-string">'id=12'</span>) <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(12) <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
 
-<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(<span class="color-source-sql-string">'id=&dollar;1'</span>,12)
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(id=&#62;12, hist_columns_insert=&#62;<span class="color-source-sql-keyword">true</span>, hist_tables_detail=&#62;<span class="color-source-sql-keyword">false</span>)
 <span class="color-source-sql-keyword">union</span> <span class="color-source-sql-keyword">all</span>
-<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(<span class="color-source-sql-string">'invoice_id=&dollar;1'</span>, 12)
+<span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(invoice_id=&#62;12)
 <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
 </pre>
 </div>
@@ -1097,8 +1109,8 @@ cсылка на общую транзацию - изменения в друг�
   <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_statement_id</td><td style="width: 5px;"></td><td style="white-space: nowrap;">bigint</td><td style="text-align: center; width: 30px;">-</td><td>ID SQL-выражения, ссылается на таблицу pghist.hist_statement</td></tr>
   <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_row_num</td><td style="width: 5px;"></td><td style="white-space: nowrap;">int</td><td style="text-align: center; width: 30px;">-</td><td>номер строки в наборе данных, который изменяет SQL-выражения</td></tr>
   <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_update_columns</td><td style="width: 5px;"></td><td style="white-space: nowrap;">name[]</td><td style="text-align: center; width: 30px;">-</td><td>список обновленных столбцов для операции UPDATE</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[primary key column(s)]</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>значение первичного ключа (можно быть несколько)</td></tr>
-  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[column(s) of fkey on master table]</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>значение внешного ключа на мастер-таблицу (необязательно, можно быть несколько)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[primary key column(s)]</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>значение первичного ключа (может быть несколько)</td></tr>
+  <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[column(s) of fkey on master table]</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>значение внешнего ключа на мастер-таблицу (необязательный, может быть несколько)</td></tr>
   <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">[column...]_old</td><td style="width: 5px;"></td><td style="white-space: nowrap;"></td><td style="text-align: center; width: 30px;">-</td><td>старое значение для каждого столбца таблицы [schema].[table]</td></tr>
 </table>
 

@@ -47,7 +47,6 @@ create index on example.invoice_product(invoice_id);
 call pghist.hist_enable('example', 'invoice');
 call pghist.hist_enable('example', 'invoice_product', 'example', 'invoice');
 
-
 -- Change data
 insert into example.invoice values (12,'#20', current_date, 1, 120.00);
 update example.invoice set customer_id=2 where id=12;
@@ -65,16 +64,16 @@ $$;
 -- Select all changes, first three columns provide chronological
 select * from example.invoice_changes() order by 1,2,3;
 
--- Select all changes with column id (immutable), insert detail by columns  
-select * from example.invoice_changes(insert_detail=>true, columns_immutable=>true) order by 1,2,3; 
+-- Select all changes with column id (immutable), insert detail by columns, without detail table example.invoice_product
+select * from example.invoice_changes(hist_columns_insert=>true, hist_columns_immutable=>true, hist_tables_detail=>false) order by 1,2,3; 
 
--- Select partial changes by id
-select * from example.invoice_changes('id=12') order by 1,2,3;
+-- Select partial changes by id with detail table, autocreated indexes provide fast execution
+select * from example.invoice_changes(12) order by 1,2,3;
 
--- Select changes in two related tables, fast execution provides index invoice_product(invoice_id)
-select * from example.invoice_changes('id=$1',12)
+-- Equivalent with using union all  
+select * from example.invoice_changes(id=>12, hist_tables_detail=>false)
 union all
-select * from example.invoice_product_changes('invoice_id=$1', 12)
+select * from example.invoice_product_changes(invoice_id=>12)
 order by 1,2,3;
 
 -- Set description expression for columns row_desc and value_desc   
