@@ -67,8 +67,8 @@ create table if not exists pghist.hist_sql_log(
 );
 
 do $$ begin
-  if to_regtype('pghist.table_change') is null then
-    create type pghist.table_change as (
+  if to_regtype('pghist.hist_table_change') is null then
+    create type pghist.hist_table_change as (
       statement_num bigint,
       row_num int,
       column_num int,
@@ -288,7 +288,7 @@ begin
   call pghist.hist_disable(v_schema, v_table_name);
 end; $$;
 
-create or replace function pghist.event_fn_ddl_command() returns event_trigger security definer as $$
+create or replace function pghist.hist_event_fn_ddl_command() returns event_trigger security definer as $$
 declare
   v_table record;
 begin
@@ -312,7 +312,7 @@ begin
 end;
 $$ language plpgsql;
 
-create or replace function pghist.event_fn_drop_table() returns event_trigger security definer as $$
+create or replace function pghist.hist_event_fn_drop_table() returns event_trigger security definer as $$
 declare
   v_table record;
 begin 
@@ -328,13 +328,12 @@ $$ language plpgsql;
 
 do $$ begin
   if not exists (select 1 from pg_event_trigger where evtname='pghist_event_tg_ddl_command') then
-    create event trigger pghist_event_tg_ddl_command on ddl_command_end when tag in ('ALTER TABLE','CREATE INDEX','COMMENT') execute procedure pghist.event_fn_ddl_command();
+    create event trigger pghist_event_tg_ddl_command on ddl_command_end when tag in ('ALTER TABLE','CREATE INDEX','COMMENT') execute procedure pghist.hist_event_fn_ddl_command();
   end if;
   if not exists (select 1 from pg_event_trigger where evtname='pghist_event_tg_drop_table') then
-    create event trigger pghist_event_tg_drop_table on sql_drop when tag in ('DROP TABLE','DROP SCHEMA') execute function pghist.event_fn_drop_table();
+    create event trigger pghist_event_tg_drop_table on sql_drop when tag in ('DROP TABLE','DROP SCHEMA') execute function pghist.hist_event_fn_drop_table();
   end if; 
 end $$;
-
 
 
 create or replace procedure pghist.hist_enable(schema name, table_name name, master_table_schema name default null, master_table_name name default null, columns_excluded name[] default null) security definer language plpgsql as $body$
@@ -594,10 +593,10 @@ begin
     v_sql_part := v_sql_part||'case when '||v_col||' is not null then '' and d.'||v_col||'=$'||v_i||''' else '''' end||';
   end loop; 
   v_sql_part := v_sql_part||'''';
-  v_sql := v_sql||'hist_columns_immutable boolean default false, hist_columns_insert boolean default false, hist_tables_detail boolean default true, hist_tables_inherited boolean default true) returns setof pghist.table_change language plpgsql security definer as $func$'||v_newline||
+  v_sql := v_sql||'hist_columns_immutable boolean default false, hist_columns_insert boolean default false, hist_tables_detail boolean default true, hist_tables_inherited boolean default true) returns setof pghist.hist_table_change language plpgsql security definer as $func$'||v_newline||
     'declare'||v_newline||
     '  v_row '||v_schema||'.'||v_table_name||'%rowtype;'||v_newline||    
-    '  v_change pghist.table_change;'||v_newline||
+    '  v_change pghist.hist_table_change;'||v_newline||
     '  v_hist record;'||v_newline||
     '  v_cur_hist refcursor;'||v_newline||
     'begin'||v_newline||

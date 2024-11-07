@@ -29,7 +29,7 @@ select hist_timestamp,hist_operation,hist_db_user,amount_old
 select * from example.document_hist
 union all 
 select null,null,null,'[CURRENT_VALUES]',null,null,null,null,null,null,* from example.document
-order by id,1
+order by id,1;
 
 -- Create extended view and grant select on it to developer
 -- (alternatively to 'grant select on all tables in schema pghist to developer');  

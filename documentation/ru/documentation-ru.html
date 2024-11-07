@@ -498,7 +498,7 @@ cсылка на общую транзацию - изменения в друг�
 <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_hist
 <span class="color-source-sql-keyword">union</span> <span class="color-source-sql-keyword">all</span> 
 <span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">null</span>,<span class="color-source-sql-keyword">null</span>,<span class="color-source-sql-keyword">null</span>,<span class="color-source-sql-string">'[CURRENT_VALUES]'</span>,<span class="color-source-sql-keyword">null</span>,<span class="color-source-sql-keyword">null</span>,<span class="color-source-sql-keyword">null</span>,<span class="color-source-sql-keyword">null</span>,<span class="color-source-sql-keyword">null</span>,<span class="color-source-sql-keyword">null</span>,* <span class="color-source-sql-keyword">from</span> example.<span class="color-source-sql-keyword">document</span>
-<span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> id,1
+<span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> id,1;
 
 <span class="color-source-sql-comment">-- Create extended view and grant select on it to developer</span>
 <span class="color-source-sql-comment">-- (alternatively to 'grant select on all tables in schema pghist to developer');  </span>
@@ -637,12 +637,12 @@ cсылка на общую транзацию - изменения в друг�
 Для подобных запросов рекомендуется создавать функции-обертки.
 <br><br>
 Для схем данных со сложной структурой рекомендуется создавать функции [schema].[table]_changes_ui(id), которые будут возвращать необходимый набор данных.
-Для приложения или проекта можно создать один единый тип данных table_changes_ui и одну экранную форму (web-страницу) для отображения истории по любым таблицам и условиям.
+Для приложения или проекта можно создать один единый тип данных hist_table_changes_ui и одну экранную форму (web-страницу) для отображения истории по любым таблицам и условиям.
 <br><br>
 Пример:<br>
 <div class="div-source-code border-color-div-source-code" style="height: 250px;">
 <pre><span class="color-source-sql-comment">-- Create function that returns changes by date</span>
-<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.invoice_changes_ui_date(date_changes date) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">setof</span> pghist.table_change <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">sql</span> <span class="color-source-sql-keyword">security</span> <span class="color-source-sql-keyword">definer</span> <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.invoice_changes_ui_date(date_changes date) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">setof</span> pghist.hist_table_change <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">sql</span> <span class="color-source-sql-keyword">security</span> <span class="color-source-sql-keyword">definer</span> <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
   <span class="color-source-sql-keyword">select</span> c.*
     <span class="color-source-sql-keyword">from</span> (<span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">distinct</span> id <span class="color-source-sql-keyword">from</span> example.invoice_hist <span class="color-source-sql-keyword">where</span> hist_timestamp::date=date_changes) h
     <span class="color-source-sql-keyword">cross</span> <span class="color-source-sql-keyword">join</span> example.invoice_changes(h.id) c
@@ -651,7 +651,7 @@ cсылка на общую транзацию - изменения в друг�
 <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes_ui_date(<span class="color-source-sql-keyword">current_date</span>);
 
 <span class="color-source-sql-comment">-- Create function that returns changes to master and detail tables</span>
-<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.invoice_changes_ui_simple(id <span class="color-source-sql-keyword">int</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">setof</span> pghist.table_change <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">sql</span> <span class="color-source-sql-keyword">security</span> <span class="color-source-sql-keyword">definer</span> <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.invoice_changes_ui_simple(id <span class="color-source-sql-keyword">int</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">setof</span> pghist.hist_table_change <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">sql</span> <span class="color-source-sql-keyword">security</span> <span class="color-source-sql-keyword">definer</span> <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
   <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(id=&#62;id,hist_tables_detail=&#62;<span class="color-source-sql-keyword">false</span>,hist_columns_insert=&#62;<span class="color-source-sql-keyword">true</span>)
   <span class="color-source-sql-keyword">union</span> <span class="color-source-sql-keyword">all</span>
   <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(invoice_id=&#62;id)
@@ -661,7 +661,7 @@ cсылка на общую транзацию - изменения в друг�
 
 <span class="color-source-sql-comment">-- Create type with only necessary columns for the UI and cast function to it,</span>
 <span class="color-source-sql-comment">-- type is created only once (as a rule, there is only one history view form per project) </span>
-<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">type</span> example.table_change_ui <span class="color-source-sql-keyword">as</span> (
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">type</span> example.hist_table_change_ui <span class="color-source-sql-keyword">as</span> (
   <span class="color-source-sql-keyword">timestamp</span> timestamptz,
   operation_name <span class="color-source-sql-keyword">varchar</span>,
   db_user_name <span class="color-source-sql-keyword">varchar</span>,
@@ -670,20 +670,20 @@ cсылка на общую транзацию - изменения в друг�
   value_old_desc <span class="color-source-sql-keyword">text</span>,      
   value_new_desc <span class="color-source-sql-keyword">text</span>
 );
-<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.table_change_ui_cast(tc pghist.table_change) <span class="color-source-sql-keyword">returns</span> example.table_change_ui <span class="color-source-sql-keyword">language</span> plpgsql <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.hist_table_change_ui_cast(c pghist.hist_table_change) <span class="color-source-sql-keyword">returns</span> example.hist_table_change_ui <span class="color-source-sql-keyword">language</span> plpgsql <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
 <span class="color-source-sql-keyword">begin</span>
-  return (tc.<span class="color-source-sql-keyword">timestamp</span>,tc.operation_name,tc.db_user_name,tc.row_desc,tc.column_comment,tc.value_old_desc,tc.value_new_desc)::example.table_change_ui; 
+  return (c.<span class="color-source-sql-keyword">timestamp</span>,c.operation_name,c.db_user_name,c.row_desc,c.column_comment,c.value_old_desc,c.value_new_desc)::example.hist_table_change_ui; 
 <span class="color-source-sql-keyword">end</span>; &dollar;&dollar;;
-<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">cast</span>(pghist.table_change <span class="color-source-sql-keyword">as</span> example.table_change_ui) <span class="color-source-sql-keyword">with</span> <span class="color-source-sql-keyword">function</span> example.table_change_ui_cast <span class="color-source-sql-keyword">as</span> <span class="color-source-sql-keyword">assignment</span>;
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">cast</span>(pghist.hist_table_change <span class="color-source-sql-keyword">as</span> example.hist_table_change_ui) <span class="color-source-sql-keyword">with</span> <span class="color-source-sql-keyword">function</span> example.hist_table_change_ui_cast <span class="color-source-sql-keyword">as</span> <span class="color-source-sql-keyword">assignment</span>;
 
 <span class="color-source-sql-comment">-- Create function that returns only necessary columns</span>
-<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.invoice_changes_ui(id <span class="color-source-sql-keyword">int</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">setof</span> example.table_change_ui <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">sql</span> <span class="color-source-sql-keyword">security</span> <span class="color-source-sql-keyword">definer</span> <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
-  <span class="color-source-sql-keyword">select</span> tc::pghist.table_change::example.table_change_ui <span class="color-source-sql-keyword">from</span> ( 
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.invoice_changes_ui(id <span class="color-source-sql-keyword">int</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">setof</span> example.hist_table_change_ui <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">sql</span> <span class="color-source-sql-keyword">security</span> <span class="color-source-sql-keyword">definer</span> <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
+  <span class="color-source-sql-keyword">select</span> c::pghist.hist_table_change::example.hist_table_change_ui <span class="color-source-sql-keyword">from</span> ( 
     <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(id=&#62;id,hist_tables_detail=&#62;<span class="color-source-sql-keyword">false</span>,hist_columns_insert=&#62;<span class="color-source-sql-keyword">true</span>)
     <span class="color-source-sql-keyword">union</span> <span class="color-source-sql-keyword">all</span>
     <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(invoice_id=&#62;id)
     <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3
-  ) tc;  
+  ) c;  
 &dollar;&dollar;;
 <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes_ui(12);
 </pre>
@@ -909,7 +909,7 @@ cсылка на общую транзацию - изменения в друг�
   <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">hist_tables_inherited</td><td style="width: 5px;"></td><td style="white-space: nowrap;">boolean</td><td style="text-align: center; width: 30px;">-</td><td>учитывать унаследованные таблицы (необязательный, по умолчанию true)</td></tr>
 </table>
 <br>
-Столбцы возвращаемого набора данных:<br>
+Столбцы возвращаемого набора данных (тип pghist.hist_table_change):<br>
 <table>
   <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">statement_num</td><td style="width: 5px;"></td><td style="white-space: nowrap;">bigint</td><td style="text-align: center; width: 30px;">-</td><td>глобальный номер SQL-выражения</td></tr>
   <tr><td style="width: 10px;"></td><td style="white-space: nowrap;">row_num</td><td style="width: 5px;"></td><td style="white-space: nowrap;">int</td><td style="text-align: center; width: 30px;">-</td><td>номер строки в наборе данных, который изменяет SQL-выражения</td></tr>
