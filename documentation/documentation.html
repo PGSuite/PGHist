@@ -626,6 +626,7 @@ Example:<br>
   return <span class="color-source-sql-string">'['</span>||db_user||<span class="color-source-sql-string">']'</span>;                                        
 <span class="color-source-sql-keyword">end</span>; &dollar;&dollar;;
 <span class="color-source-sql-keyword">call</span> pghist.hist_column_custom_function(<span class="color-source-sql-string">'db_user_name'</span>, <span class="color-source-sql-string">'example.db_user_name'</span>);
+<span class="color-source-sql-comment">-- call pghist.hist_column_custom_function('db_user_name', 'pghist.hist_default_db_user_name');</span>
 </pre>
 </div>
 <br>

@@ -87,4 +87,5 @@ begin
   return '['||db_user||']';                                        
 end; $$;
 call pghist.hist_column_custom_function('db_user_name', 'example.db_user_name');
+-- call pghist.hist_column_custom_function('db_user_name', 'pghist.hist_default_db_user_name');
 
