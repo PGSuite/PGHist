@@ -2,7 +2,7 @@ create schema if not exists pghist;
 
 create or replace function pghist.pghist_version() returns varchar language plpgsql as $$
 begin
-  return '24.4.8';
+  return '25.1.1';
 end; $$;
 
 create table if not exists pghist.hist_transaction(
@@ -447,7 +447,6 @@ begin
       join pghist.hist_table t on t.schema=quote_ident(e.schema_name) and t.name=quote_ident(c.relname)
       where e.object_type='table column' 
   loop
-    perform tmp_log_insert(v_table.column_name_old||' '||v_table.column_num); -- ***
     perform pghist.hist_event_column_rename(v_table.schema, v_table.name, v_table.oid, v_table.column_name_old, v_table.column_num);
     perform pghist.hist_objects_refresh(v_table.schema, v_table.name);
   end loop;
