@@ -1,4 +1,4 @@
-## PGHist | History of table changes in PostgreSQL
+## PGHist | History and audit of table changes in PostgreSQL
 
 Tool `PGHist` keeps history of table changes and allows to get log(audit) of changes by row,
 list of changes by field indicating user, time of the change, SQL query, transaction, other technical information
@@ -78,7 +78,7 @@ All examples in directory [example](https://github.com/PGHist/PGHist/tree/main/e
 
 *   **\[schema\].\[table\]\_at\_timestamp** - table at date-time in the past (versioning)
 
-Documentation in file [documentation/documentation.html](https://htmlpreview.github.io/?https://github.com/PGHist/PGHist/blob/main/documentation/documentation.html)  
+Documentation in file [documentation/documentation.html](https://htmlpreview.github.io/?https://github.com/PGSuite/PGHist/blob/main/documentation/documentation.html)  
 
 ### Important qualities ### 
 
@@ -88,7 +88,7 @@ Documentation in file [documentation/documentation.html](https://htmlpreview.git
 *   **Inheritance** - stored procedures have parameter "cascade" that allows you to get data with or without inheritance
 *   **Transaction and SQL statements** - changes have a reference to SQL statements, that references a transaction. Can get all the changes made within a single transaction or rows within one expression
 *   **Indexes** - for a history table, an index is built on the primary key column(s), for a table at a point in time - standard indexes on columns
-*   **Condition (optional)** - when getting a list of changes, you can specify a condition with or without parameter
+*   **Condition (optional)** - when getting a list of changes, you specify a condition on the primary key or foreign key referencing the master table
 *   **Autocorrection** - when performing DDL operations on a table (alter table, create index, etc.), a trigger fires, that corrects the history keeping. When a table is deleted, its history is also deleted
 
 Overview on site [pghist.org](https://pghist.org/en/)
