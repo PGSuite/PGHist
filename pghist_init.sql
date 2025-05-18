@@ -2,7 +2,7 @@ create schema if not exists pghist;
 
 create or replace function pghist.pghist_version() returns varchar language plpgsql as $$
 begin
-  return '25.1.1';
+  return '25.2';
 end; $$;
 
 create table if not exists pghist.hist_transaction(
@@ -213,7 +213,7 @@ begin
     order by d.conkey[1]
     limit 1;
   if v_fkey_out is null then
-    raise exception 'PGHIST-003 Not found foreign key on master table';
+    raise exception 'PGSUITE-2003 Not found foreign key on master table';
   end if;      
   return (
     select array_agg(quote_ident(a.attname) order by master_pkey.pos)
@@ -275,7 +275,7 @@ begin
     from unnest( (select conkey from pg_constraint where conrelid=v_table_oid and contype='p') ) with ordinality c(col_num,col_pos)
     join pg_attribute a on attrelid=v_table_oid and attnum = col_num;
   if v_columns_pkey is null then
-    raise exception 'PGHIST-002 Table does not have primary key';
+    raise exception 'PGSUITE-2002 Table does not have primary key';
   end if;   
   v_columns_immutable := pghist.hist_columns_immutable(v_columns_pkey, v_master_table_fkey);
   v_sql :=
@@ -614,7 +614,7 @@ begin
     '      left join rows_new n on '||pghist.hist_columns_to_text(v_columns_immutable,$$ 'o.'||col||'=n.'||col $$,' and ')||v_newline||
     '      where n.'||v_columns_pkey[1]||' is null'||v_newline||
     '  ) then '||v_newline||
-    '    raise exception ''PGHIST-001 Update column(s) '||pghist.hist_columns_to_text(v_columns_immutable,$$ pghist.hist_ident_in_str(col) $$)||' of table '||pghist.hist_ident_in_str(v_schema)||'.'||pghist.hist_ident_in_str(v_table_name)||' is not allowed'';'||v_newline||
+    '    raise exception ''PGSUITE-2001 Update column(s) '||pghist.hist_columns_to_text(v_columns_immutable,$$ pghist.hist_ident_in_str(col) $$)||' of table '||pghist.hist_ident_in_str(v_schema)||'.'||pghist.hist_ident_in_str(v_table_name)||' is not allowed'';'||v_newline||
     '  end if;'||v_newline|| 
     '  insert into '||v_hist_data_table||'(hist_statement_id,hist_row_num,hist_update_columns,'||pghist.hist_columns_to_text(v_columns_immutable)||pghist.hist_columns_to_text(v_columns_value_old,$$ ','||col $$,'')||')'||v_newline||
     '    select v_statement_id,'||v_newline||
