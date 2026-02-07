@@ -34,7 +34,7 @@ order by id,1;
 -- Create extended view and grant select on it to developer
 -- (alternatively to 'grant select on all tables in schema pghist to developer');  
 select *
-  from pghist.hist_data$example_document h  
+  from pghist.data$example_document h  
   join pghist.hist_statement s on s.id = h.hist_statement_id
   join pghist.hist_query q on q.hash = s.query_hash
   join pghist.hist_transaction t on t.id = s.transaction_id
@@ -42,7 +42,7 @@ select *
  
 create or replace view example.document_hist_ext as  
   select h.id,t.timestamp_commit,t.db_client_addr,q.text query_text
-    from pghist.hist_data$example_document h  
+    from pghist.data$example_document h  
     join pghist.hist_statement s on s.id = h.hist_statement_id
     join pghist.hist_query q on q.hash = s.query_hash
     join pghist.hist_transaction t on t.id = s.transaction_id

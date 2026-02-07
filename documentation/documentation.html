@@ -526,7 +526,7 @@ Example:<br>
 <span class="color-source-sql-comment">-- Create extended view and grant select on it to developer</span>
 <span class="color-source-sql-comment">-- (alternatively to 'grant select on all tables in schema pghist to developer');  </span>
 <span class="color-source-sql-keyword">select</span> *
-  <span class="color-source-sql-keyword">from</span> pghist.hist_data&dollar;example_document h  
+  <span class="color-source-sql-keyword">from</span> pghist.data&dollar;example_document h  
   <span class="color-source-sql-keyword">join</span> pghist.hist_statement s <span class="color-source-sql-keyword">on</span> s.id = h.hist_statement_id
   <span class="color-source-sql-keyword">join</span> pghist.hist_query q <span class="color-source-sql-keyword">on</span> q.hash = s.query_hash
   <span class="color-source-sql-keyword">join</span> pghist.hist_transaction t <span class="color-source-sql-keyword">on</span> t.id = s.transaction_id
@@ -534,7 +534,7 @@ Example:<br>
  
 <span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">view</span> example.document_hist_ext <span class="color-source-sql-keyword">as</span>  
   <span class="color-source-sql-keyword">select</span> h.id,t.timestamp_commit,t.db_client_addr,q.<span class="color-source-sql-keyword">text</span> query_text
-    <span class="color-source-sql-keyword">from</span> pghist.hist_data&dollar;example_document h  
+    <span class="color-source-sql-keyword">from</span> pghist.data&dollar;example_document h  
     <span class="color-source-sql-keyword">join</span> pghist.hist_statement s <span class="color-source-sql-keyword">on</span> s.id = h.hist_statement_id
     <span class="color-source-sql-keyword">join</span> pghist.hist_query q <span class="color-source-sql-keyword">on</span> q.hash = s.query_hash
     <span class="color-source-sql-keyword">join</span> pghist.hist_transaction t <span class="color-source-sql-keyword">on</span> t.id = s.transaction_id
@@ -651,7 +651,7 @@ Example:<br>
 <span class="color-source-sql-keyword">begin</span> 
   return <span class="color-source-sql-string">'['</span>||db_user||<span class="color-source-sql-string">']'</span>;                                        
 <span class="color-source-sql-keyword">end</span>; &dollar;&dollar;;
-<span class="color-source-sql-keyword">call</span> pghist.hist_column_custom_function(<span class="color-source-sql-string">'db_user_name'</span>, <span class="color-source-sql-string">'example.db_user_name'</span>);
+<span class="color-source-sql-comment">-- call pghist.hist_column_custom_function('db_user_name', 'example.db_user_name');</span>
 <span class="color-source-sql-comment">-- call pghist.hist_column_custom_function('db_user_name', 'pghist.hist_default_db_user_name');</span>
 </pre>
 </div>
@@ -784,9 +784,9 @@ Example:<br>
  
 <span class="color-source-sql-keyword">do</span> &dollar;&dollar;
 <span class="color-source-sql-keyword">begin</span>
-  perform set_config(<span class="color-source-sql-string">'pghist.at_timestamp'</span>, <span class="color-source-sql-string">'2024-04-06 10:00:00'</span>, <span class="color-source-sql-keyword">true</span>);    
-  perform example.invoice_at_timestamp();    
-  perform example.customer_at_timestamp();
+  <span class="color-source-sql-keyword">perform</span> set_config(<span class="color-source-sql-string">'pghist.at_timestamp'</span>, <span class="color-source-sql-string">'2024-04-06 10:00:00'</span>, <span class="color-source-sql-keyword">true</span>);    
+  <span class="color-source-sql-keyword">perform</span> example.invoice_at_timestamp();    
+  <span class="color-source-sql-keyword">perform</span> example.customer_at_timestamp();
 <span class="color-source-sql-keyword">end</span>; 
 &dollar;&dollar;;
  
@@ -804,7 +804,7 @@ Example:<br>
 <a id="security"></a>
 <p style="font-size:larger;"><b>Security</b></p>
 <br>
-History table <a href="#hist_table">hist_data$[schema]_[table]</a> and trigger functions are created in pghist schema,
+History table <a href="#hist_table">data$[schema]_[table]</a> and trigger functions are created in pghist schema,
 objects for working with history are created in the table schema.
 Owner of all created objects is superuser, stored procedures are created with option <em>security definer</em>.
 Owner of table is granted privilegies with grant option to select from view <a href="#view_hist">[schema].[table]_hist</a> and 
@@ -998,9 +998,9 @@ Examples:<br>
 
 <span class="color-source-sql-keyword">do</span> &dollar;&dollar;
 <span class="color-source-sql-keyword">begin</span>
-  perform set_config(<span class="color-source-sql-string">'pghist.at_timestamp'</span>, <span class="color-source-sql-string">'2024-04-06 10:00:00'</span>, <span class="color-source-sql-keyword">true</span>);    
-  perform example.invoice_at_timestamp();    
-  perform example.customer_at_timestamp();
+  <span class="color-source-sql-keyword">perform</span> set_config(<span class="color-source-sql-string">'pghist.at_timestamp'</span>, <span class="color-source-sql-string">'2024-04-06 10:00:00'</span>, <span class="color-source-sql-keyword">true</span>);    
+  <span class="color-source-sql-keyword">perform</span> example.invoice_at_timestamp();    
+  <span class="color-source-sql-keyword">perform</span> example.customer_at_timestamp();
 <span class="color-source-sql-keyword">end</span>; 
 &dollar;&dollar;;
 <span class="color-source-sql-keyword">select</span> * 
@@ -1124,7 +1124,7 @@ Example:<br>
 
 
 <a id="hist_table"></a>
-<p style="font-size:larger;"><b>History table pghist.hist_data$[schema]_[table]</b></p>
+<p style="font-size:larger;"><b>History table pghist.data$[schema]_[table]</b></p>
 <br>
 History table is created in addition to the main table, developer (owner of main table) has access through the view <a href="#view_hist">[schema].[table]_hist</a>
 <br>
@@ -1143,7 +1143,7 @@ Columns:<br>
 Example:<br>
 <div class="div-source-code border-color-div-source-code" style="height: 120px;">
 <pre><span class="color-source-sql-keyword">select</span> *
-  <span class="color-source-sql-keyword">from</span> pghist.hist_data&dollar;example_invoice h
+  <span class="color-source-sql-keyword">from</span> pghist.data&dollar;example_invoice h
   <span class="color-source-sql-keyword">join</span> pghist.hist_statement s <span class="color-source-sql-keyword">on</span> s.id=h.hist_statement_id
   <span class="color-source-sql-keyword">join</span> pghist.hist_query q <span class="color-source-sql-keyword">on</span> q.hash=s.query_hash
   <span class="color-source-sql-keyword">where</span> q.<span class="color-source-sql-keyword">text</span> <span class="color-source-sql-keyword">like</span> <span class="color-source-sql-string">'do%begin%'</span>;
@@ -1175,7 +1175,7 @@ Modification of common tables is allowed using stored procedures.
 By default, developers (owners of main tables) do not have access to common tables; if necessary, privilegies are granted manually.
 <br>
 <br>
-History table <a href="#hist_table">pghist.hist_data$[schema]_[table]</a> by field <em>statement_id</em> refers to <em>pghist.hist_statement</em>, which in, in turn, refers to <em>pghist.hist_transaction</em> and <em>pghist.hist_query</em>.
+History table <a href="#hist_table">pghist.data$[schema]_[table]</a> by field <em>statement_id</em> refers to <em>pghist.hist_statement</em>, which in, in turn, refers to <em>pghist.hist_transaction</em> and <em>pghist.hist_query</em>.
 
 <br>
 <br>
