@@ -567,7 +567,7 @@ begin
     end if; 
   end loop; 
   select array_agg(col),array_agg(pghist.hist_ident('',col,'_old')) into v_columns_value,v_columns_value_old from unnest(v_columns_name) col where not col = any(v_columns_immutable); 
-  for v_i in 1..array_length(v_columns_name,1) loop
+  for v_i in 1..coalesce(array_length(v_columns_name,1), 0) loop
     v_expression := pghist.hist_expression_value_desc_current(v_schema, v_table_name, v_columns_name[v_i]);
     if v_expression is not null then
       v_sql_part := ' execute '||quote_literal('select ('||v_expression||')')||' into v_change.value_';
@@ -721,7 +721,7 @@ begin
     '      v_change.value_old := null; v_change.value_old_desc := null;'||v_newline||
     '      '||v_row_desc_expr||v_newline||
     '      if hist_columns_insert then'||v_newline;   
-  for v_i in 1..array_length(v_columns_name,1) loop
+  for v_i in 1..coalesce(array_length(v_columns_name,1), 0) loop
     v_col := v_columns_name[v_i];
     if v_col=any(v_columns_immutable) then 
       v_sql := v_sql||'        if hist_columns_immutable then'||v_newline;
@@ -765,7 +765,7 @@ begin
     '      v_change.value_new := null; v_change.value_new_desc := null;'||v_newline||
     '      '||v_sql_hist_to_row||v_newline||
     '      '||v_row_desc_expr||v_newline;
-  for v_i in 1..array_length(v_columns_name,1) loop
+  for v_i in 1..coalesce(array_length(v_columns_name,1), 0) loop
     v_col := v_columns_name[v_i];
     if v_col=any(v_columns_immutable) then 
       v_sql := v_sql||'      if hist_columns_immutable then'||v_newline;
