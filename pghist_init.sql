@@ -2,7 +2,7 @@ create schema if not exists pghist;
 
 create or replace function pghist.pghist_version() returns varchar language plpgsql as $$
 begin
-  return '26.1';
+  return '26.2';
 end; $$;
 
 create table if not exists pghist.hist_transaction(
@@ -173,8 +173,8 @@ create or replace function pghist.hist_columns_to_text(columns name[], expr text
 declare
   v_text text;
 begin
-  if pg_catalog.array_length(columns, 1) is null then return ''; end if;	
-  execute format('select string_agg(%s, ''%s'' order by pos) from unnest($1) with ordinality r(col,pos)', expr, delimiter )
+  if array_length(columns, 1) is null then return ''; end if;	
+  execute format('select string_agg(%s, ''%s'' order by pos) from unnest($1) with ordinality r(col,pos)', expr, delimiter)
     into v_text
     using columns;	
   return v_text;  
@@ -566,8 +566,8 @@ begin
       call pghist.hist_execute_sql(v_schema, v_table_name, v_sql);         
     end if; 
   end loop; 
-  select array_agg(col),array_agg(pghist.hist_ident('',col,'_old')) into v_columns_value,v_columns_value_old from unnest(v_columns_name) col where not col = any(v_columns_immutable); 
-  for v_i in 1..array_length(v_columns_name,1) loop
+  select coalesce(array_agg(col),array[]::name[]),coalesce(array_agg(pghist.hist_ident('',col,'_old')),array[]::name[]) into v_columns_value,v_columns_value_old from unnest(v_columns_name) col where not col = any(v_columns_immutable); 
+  for v_i in 1..cardinality(v_columns_name) loop
     v_expression := pghist.hist_expression_value_desc_current(v_schema, v_table_name, v_columns_name[v_i]);
     if v_expression is not null then
       v_sql_part := ' execute '||quote_literal('select ('||v_expression||')')||' into v_change.value_';
@@ -610,16 +610,16 @@ begin
     '  insert into '||v_hist_data_table||'(hist_statement_id,hist_row_num,hist_update_columns,'||pghist.hist_columns_to_text(v_columns_immutable)||pghist.hist_columns_to_text(v_columns_value_old,$$ ','||col $$,'')||')'||v_newline||
     '    select v_statement_id,'||v_newline||
     '           hist_row_num,'||v_newline||
-    '           array[]::name[]'||v_newline;
-  v_sql_part := pghist.hist_columns_to_text(v_columns_immutable,$$ '           o.'||col||',' $$,v_newline)||v_newline;  
-  for v_i in 1..array_length(v_columns_value,1) loop
+    '           array[]::name[]';
+  v_sql_part := pghist.hist_columns_to_text(v_columns_immutable,$$ '           o.'||col $$, ','||v_newline);  
+  for v_i in 1..cardinality(v_columns_value) loop
     v_col := v_columns_value[v_i];
     v_type_convert := case when v_columns_type[array_position(v_columns_name, v_col)] in ('json','_json','xml','_xml') then '::text' else '' end;
     v_sql_condition := '(o.'||v_col||v_type_convert||'!=n.'||v_col||v_type_convert||') or (o.'||v_col||' is null and n.'||v_col||' is not null) or (o.'||v_col||' is not null and n.'||v_col||' is null)';
-    v_sql := v_sql||'             ||(case when '||v_sql_condition||' then array['||quote_literal(v_col)||'::name] else array[]::name[] end)'||case when v_i=array_length(v_columns_value,1) then ',' else '' end||v_newline;
-    v_sql_part := v_sql_part||'           case when '||v_sql_condition||' then o.'||v_col||' end'||case when v_i<array_length(v_columns_value,1) then ',' else '' end||v_newline;
+    v_sql      := v_sql     ||      v_newline||'           ||(case when '||v_sql_condition||' then array['||quote_literal(v_col)||'::name] else array[]::name[] end)';
+    v_sql_part := v_sql_part||',' ||v_newline||'           case when '||v_sql_condition||' then o.'||v_col||' end';
   end loop;
-  v_sql := v_sql||v_sql_part||
+  v_sql := v_sql||','||v_newline||v_sql_part||v_newline||
     '     from (select row_number() over () hist_row_num,* from rows_old) o'||v_newline||
     '     join rows_new n on '||pghist.hist_columns_to_text(v_columns_pkey,$$ 'o.'||col||'=n.'||col $$,' and ')||';'||v_newline||
     '  return null;'||v_newline|| 
@@ -671,7 +671,7 @@ begin
   v_sql_hist_to_row := pghist.hist_columns_to_text(v_columns_immutable,$$ 'v_row.'||col||' := v_hist.'||col||';' $$,' ')||pghist.hist_columns_to_text(v_columns_value,$$ ' v_row.'||col||' := v_hist.'||pghist.hist_ident('',col,'_old')||';' $$,'');    
   v_sql := 'create or replace function '||v_schema||'.'||v_func_changes||'(';
   v_sql_part := 'where true''||'; 
-  for v_i in 1..array_length(v_columns_immutable,1) loop
+  for v_i in 1..cardinality(v_columns_immutable) loop
     v_col := v_columns_immutable[v_i];     
     v_sql := v_sql||v_col||' '||v_columns_type[array_position(v_columns_name,v_col)]||' default null, ';
     v_sql_part := v_sql_part||'case when '||v_col||' is not null then '' and d.'||pghist.hist_ident_in_str(v_col)||'=$'||v_i||''' else '''' end||';
@@ -721,7 +721,7 @@ begin
     '      v_change.value_old := null; v_change.value_old_desc := null;'||v_newline||
     '      '||v_row_desc_expr||v_newline||
     '      if hist_columns_insert then'||v_newline;   
-  for v_i in 1..array_length(v_columns_name,1) loop
+  for v_i in 1..cardinality(v_columns_name) loop
     v_col := v_columns_name[v_i];
     if v_col=any(v_columns_immutable) then 
       v_sql := v_sql||'        if hist_columns_immutable then'||v_newline;
@@ -765,7 +765,7 @@ begin
     '      v_change.value_new := null; v_change.value_new_desc := null;'||v_newline||
     '      '||v_sql_hist_to_row||v_newline||
     '      '||v_row_desc_expr||v_newline;
-  for v_i in 1..array_length(v_columns_name,1) loop
+  for v_i in 1..cardinality(v_columns_name) loop
     v_col := v_columns_name[v_i];
     if v_col=any(v_columns_immutable) then 
       v_sql := v_sql||'      if hist_columns_immutable then'||v_newline;

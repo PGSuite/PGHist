@@ -172,6 +172,16 @@ a, a:link, a:active, a:visited {
     padding-bottom: 15px;
 } 
 
+.div-content-panel-left > ul > a {
+  text-decoration: none;
+}
+
+.div-content-panel-left > ul > li > a {
+  text-decoration: none;
+}
+
+
+
 .div-content-body {
     #border: solid 3px blue;
     padding: 10px 30px 10px 10px;
@@ -312,6 +322,7 @@ a, a:link, a:active, a:visited {
 .nav-mobile-item:hover {
    background: #2F718E;
 }
+
 
 .ul-articles li {
     padding-top: 17px;
@@ -618,13 +629,13 @@ Example:<br>
 <span class="color-source-sql-keyword">insert</span> <span class="color-source-sql-keyword">into</span> example.product(id,<span class="color-source-sql-keyword">name</span>,code) <span class="color-source-sql-keyword">values</span> (101,<span class="color-source-sql-string">'Pensil'</span>,<span class="color-source-sql-string">'030'</span>),(102,<span class="color-source-sql-string">'Notebook'</span>,<span class="color-source-sql-string">'040'</span>);
 <span class="color-source-sql-keyword">insert</span> <span class="color-source-sql-keyword">into</span> example.invoice_product(id, invoice_id, product_id, quantity, color) <span class="color-source-sql-keyword">values</span> (1,12,101,1000,<span class="color-source-sql-string">'R'</span>),(2,12,101,10,<span class="color-source-sql-string">'G'</span>);
 
-<span class="color-source-sql-keyword">do</span> &dollar;&dollar;
+<span class="color-source-sql-keyword">do</span> <span class="color-source-sql-block-border">&dollar;&dollar;</span>
 <span class="color-source-sql-keyword">begin</span>
   <span class="color-source-sql-keyword">update</span> example.invoice_product <span class="color-source-sql-keyword">set</span> quantity=quantity+1,color=<span class="color-source-sql-string">'B'</span> <span class="color-source-sql-keyword">where</span> id=1;
   <span class="color-source-sql-keyword">delete</span> <span class="color-source-sql-keyword">from</span> example.invoice_product <span class="color-source-sql-keyword">where</span> id=2;
   <span class="color-source-sql-keyword">update</span> example.invoice <span class="color-source-sql-keyword">set</span> amount=150 <span class="color-source-sql-keyword">where</span> id=12;
 <span class="color-source-sql-keyword">end</span>; 
-&dollar;&dollar;;
+<span class="color-source-sql-block-border">&dollar;&dollar;</span>;
 
 <span class="color-source-sql-comment">-- Select all changes, first three columns provide chronological</span>
 <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes() <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
@@ -643,14 +654,14 @@ Example:<br>
 
 <span class="color-source-sql-comment">-- Set description expression for columns row_desc and value_desc   </span>
 <span class="color-source-sql-keyword">call</span> pghist.hist_expression_row_desc(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>, <span class="color-source-sql-string">''</span><span class="color-source-sql-string">'Invoice'</span><span class="color-source-sql-string">''</span>);   
-<span class="color-source-sql-keyword">call</span> pghist.hist_expression_row_desc(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, &dollar;&dollar; <span class="color-source-sql-string">'Row #'</span>||&dollar;1.id||<span class="color-source-sql-string">' / '</span>||(<span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">name</span> <span class="color-source-sql-keyword">from</span> example.product <span class="color-source-sql-keyword">where</span> id=&dollar;1.product_id) &dollar;&dollar;);
-<span class="color-source-sql-keyword">call</span> pghist.hist_expression_value_desc(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, <span class="color-source-sql-string">'color'</span>, &dollar;&dollar; <span class="color-source-sql-keyword">case</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'R'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Red'</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'B'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Blue'</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'G'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Green'</span> <span class="color-source-sql-keyword">else</span> &dollar;1 <span class="color-source-sql-keyword">end</span> &dollar;&dollar;);
+<span class="color-source-sql-keyword">call</span> pghist.hist_expression_row_desc(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, <span class="color-source-sql-block-border">&dollar;&dollar;</span> <span class="color-source-sql-string">'Row #'</span>||&dollar;1.id||<span class="color-source-sql-string">' / '</span>||(<span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">name</span> <span class="color-source-sql-keyword">from</span> example.product <span class="color-source-sql-keyword">where</span> id=&dollar;1.product_id) <span class="color-source-sql-block-border">&dollar;&dollar;</span>);
+<span class="color-source-sql-keyword">call</span> pghist.hist_expression_value_desc(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, <span class="color-source-sql-string">'color'</span>, <span class="color-source-sql-block-border">&dollar;&dollar;</span> <span class="color-source-sql-keyword">case</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'R'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Red'</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'B'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Blue'</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'G'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Green'</span> <span class="color-source-sql-keyword">else</span> &dollar;1 <span class="color-source-sql-keyword">end</span> <span class="color-source-sql-block-border">&dollar;&dollar;</span>);
 
 <span class="color-source-sql-comment">-- Replace function for column db_user_name</span>
-<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.db_user_name(db_user <span class="color-source-sql-keyword">name</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">varchar</span> <span class="color-source-sql-keyword">language</span> plpgsql <span class="color-source-sql-keyword">as</span> &dollar;&dollar; 
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.db_user_name(db_user <span class="color-source-sql-keyword">name</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">varchar</span> <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">plpgsql</span> <span class="color-source-sql-keyword">as</span> <span class="color-source-sql-block-border">&dollar;&dollar;</span> 
 <span class="color-source-sql-keyword">begin</span> 
-  return <span class="color-source-sql-string">'['</span>||db_user||<span class="color-source-sql-string">']'</span>;                                        
-<span class="color-source-sql-keyword">end</span>; &dollar;&dollar;;
+  <span class="color-source-sql-keyword">return</span> <span class="color-source-sql-string">'['</span>||db_user||<span class="color-source-sql-string">']'</span>;                                        
+<span class="color-source-sql-keyword">end</span>; <span class="color-source-sql-block-border">&dollar;&dollar;</span>;
 <span class="color-source-sql-comment">-- call pghist.hist_column_custom_function('db_user_name', 'example.db_user_name');</span>
 <span class="color-source-sql-comment">-- call pghist.hist_column_custom_function('db_user_name', 'pghist.hist_default_db_user_name');</span>
 </pre>
@@ -666,21 +677,21 @@ one hist_table_changes_ui data type and one webpage to display history of any ta
 Example:<br>
 <div class="div-source-code border-color-div-source-code" style="height: 250px;">
 <pre><span class="color-source-sql-comment">-- Create function that returns changes by date</span>
-<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.invoice_changes_ui_date(date_changes date) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">setof</span> pghist.hist_table_change <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">sql</span> <span class="color-source-sql-keyword">security</span> <span class="color-source-sql-keyword">definer</span> <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.invoice_changes_ui_date(date_changes date) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">setof</span> pghist.hist_table_change <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">sql</span> <span class="color-source-sql-keyword">security</span> <span class="color-source-sql-keyword">definer</span> <span class="color-source-sql-keyword">as</span> <span class="color-source-sql-block-border">&dollar;&dollar;</span>
   <span class="color-source-sql-keyword">select</span> c.*
     <span class="color-source-sql-keyword">from</span> (<span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">distinct</span> id <span class="color-source-sql-keyword">from</span> example.invoice_hist <span class="color-source-sql-keyword">where</span> hist_timestamp::date=date_changes) h
     <span class="color-source-sql-keyword">cross</span> <span class="color-source-sql-keyword">join</span> example.invoice_changes(h.id) c
   <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
-&dollar;&dollar;;
+<span class="color-source-sql-block-border">&dollar;&dollar;</span>;
 <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes_ui_date(<span class="color-source-sql-keyword">current_date</span>);
 
 <span class="color-source-sql-comment">-- Create function that returns changes to master and detail tables</span>
-<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.invoice_changes_ui_simple(id <span class="color-source-sql-keyword">int</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">setof</span> pghist.hist_table_change <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">sql</span> <span class="color-source-sql-keyword">security</span> <span class="color-source-sql-keyword">definer</span> <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.invoice_changes_ui_simple(id <span class="color-source-sql-keyword">int</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">setof</span> pghist.hist_table_change <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">sql</span> <span class="color-source-sql-keyword">security</span> <span class="color-source-sql-keyword">definer</span> <span class="color-source-sql-keyword">as</span> <span class="color-source-sql-block-border">&dollar;&dollar;</span>
   <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(id=&#62;id,hist_tables_detail=&#62;<span class="color-source-sql-keyword">false</span>,hist_columns_insert=&#62;<span class="color-source-sql-keyword">true</span>)
   <span class="color-source-sql-keyword">union</span> <span class="color-source-sql-keyword">all</span>
   <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(invoice_id=&#62;id)
   <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3;
-&dollar;&dollar;;
+<span class="color-source-sql-block-border">&dollar;&dollar;</span>;
 <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes_ui_simple(12);
 
 <span class="color-source-sql-comment">-- Create type with only necessary columns for the UI and cast function to it,</span>
@@ -694,21 +705,21 @@ Example:<br>
   value_old_desc <span class="color-source-sql-keyword">text</span>,      
   value_new_desc <span class="color-source-sql-keyword">text</span>
 );
-<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.hist_table_change_ui_cast(c pghist.hist_table_change) <span class="color-source-sql-keyword">returns</span> example.hist_table_change_ui <span class="color-source-sql-keyword">language</span> plpgsql <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.hist_table_change_ui_cast(c pghist.hist_table_change) <span class="color-source-sql-keyword">returns</span> example.hist_table_change_ui <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">plpgsql</span> <span class="color-source-sql-keyword">as</span> <span class="color-source-sql-block-border">&dollar;&dollar;</span>
 <span class="color-source-sql-keyword">begin</span>
-  return (c.<span class="color-source-sql-keyword">timestamp</span>,c.operation_name,c.db_user_name,c.row_desc,c.column_comment,c.value_old_desc,c.value_new_desc)::example.hist_table_change_ui; 
-<span class="color-source-sql-keyword">end</span>; &dollar;&dollar;;
+  <span class="color-source-sql-keyword">return</span> (c.<span class="color-source-sql-keyword">timestamp</span>,c.operation_name,c.db_user_name,c.row_desc,c.column_comment,c.value_old_desc,c.value_new_desc)::example.hist_table_change_ui; 
+<span class="color-source-sql-keyword">end</span>; <span class="color-source-sql-block-border">&dollar;&dollar;</span>;
 <span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">cast</span>(pghist.hist_table_change <span class="color-source-sql-keyword">as</span> example.hist_table_change_ui) <span class="color-source-sql-keyword">with</span> <span class="color-source-sql-keyword">function</span> example.hist_table_change_ui_cast <span class="color-source-sql-keyword">as</span> <span class="color-source-sql-keyword">assignment</span>;
 
 <span class="color-source-sql-comment">-- Create function that returns only necessary columns</span>
-<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.invoice_changes_ui(id <span class="color-source-sql-keyword">int</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">setof</span> example.hist_table_change_ui <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">sql</span> <span class="color-source-sql-keyword">security</span> <span class="color-source-sql-keyword">definer</span> <span class="color-source-sql-keyword">as</span> &dollar;&dollar;
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> example.invoice_changes_ui(id <span class="color-source-sql-keyword">int</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">setof</span> example.hist_table_change_ui <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">sql</span> <span class="color-source-sql-keyword">security</span> <span class="color-source-sql-keyword">definer</span> <span class="color-source-sql-keyword">as</span> <span class="color-source-sql-block-border">&dollar;&dollar;</span>
   <span class="color-source-sql-keyword">select</span> c::pghist.hist_table_change::example.hist_table_change_ui <span class="color-source-sql-keyword">from</span> ( 
     <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes(id=&#62;id,hist_tables_detail=&#62;<span class="color-source-sql-keyword">false</span>,hist_columns_insert=&#62;<span class="color-source-sql-keyword">true</span>)
     <span class="color-source-sql-keyword">union</span> <span class="color-source-sql-keyword">all</span>
     <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_product_changes(invoice_id=&#62;id)
     <span class="color-source-sql-keyword">order</span> <span class="color-source-sql-keyword">by</span> 1,2,3
   ) c;  
-&dollar;&dollar;;
+<span class="color-source-sql-block-border">&dollar;&dollar;</span>;
 <span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.invoice_changes_ui(12);
 </pre>
 </div>
@@ -782,13 +793,13 @@ Example:<br>
   <span class="color-source-sql-keyword">from</span> example.invoice i
   <span class="color-source-sql-keyword">join</span> example.customer c <span class="color-source-sql-keyword">on</span> c.id=i.customer_id;
  
-<span class="color-source-sql-keyword">do</span> &dollar;&dollar;
+<span class="color-source-sql-keyword">do</span> <span class="color-source-sql-block-border">&dollar;&dollar;</span>
 <span class="color-source-sql-keyword">begin</span>
   <span class="color-source-sql-keyword">perform</span> set_config(<span class="color-source-sql-string">'pghist.at_timestamp'</span>, <span class="color-source-sql-string">'2024-04-06 10:00:00'</span>, <span class="color-source-sql-keyword">true</span>);    
   <span class="color-source-sql-keyword">perform</span> example.invoice_at_timestamp();    
   <span class="color-source-sql-keyword">perform</span> example.customer_at_timestamp();
 <span class="color-source-sql-keyword">end</span>; 
-&dollar;&dollar;;
+<span class="color-source-sql-block-border">&dollar;&dollar;</span>;
  
 <span class="color-source-sql-keyword">select</span> * 
   <span class="color-source-sql-keyword">from</span> example_invoice_at_timestamp i
@@ -996,13 +1007,13 @@ Examples:<br>
 <div class="div-source-code border-color-div-source-code" style="height: 246px;">
 <pre><span class="color-source-sql-keyword">select</span> * <span class="color-source-sql-keyword">from</span> example.document_at_timestamp(now()-<span class="color-source-sql-keyword">interval</span> <span class="color-source-sql-string">'1 hour'</span>);
 
-<span class="color-source-sql-keyword">do</span> &dollar;&dollar;
+<span class="color-source-sql-keyword">do</span> <span class="color-source-sql-block-border">&dollar;&dollar;</span>
 <span class="color-source-sql-keyword">begin</span>
   <span class="color-source-sql-keyword">perform</span> set_config(<span class="color-source-sql-string">'pghist.at_timestamp'</span>, <span class="color-source-sql-string">'2024-04-06 10:00:00'</span>, <span class="color-source-sql-keyword">true</span>);    
   <span class="color-source-sql-keyword">perform</span> example.invoice_at_timestamp();    
   <span class="color-source-sql-keyword">perform</span> example.customer_at_timestamp();
 <span class="color-source-sql-keyword">end</span>; 
-&dollar;&dollar;;
+<span class="color-source-sql-block-border">&dollar;&dollar;</span>;
 <span class="color-source-sql-keyword">select</span> * 
   <span class="color-source-sql-keyword">from</span> example_invoice_at_timestamp i
   <span class="color-source-sql-keyword">join</span> example_customer_at_timestamp c <span class="color-source-sql-keyword">on</span> c.id=i.customer_id;
@@ -1053,8 +1064,8 @@ Parameters:<br>
 Examples:<br>
 <div class="div-source-code border-color-div-source-code" style="height: 138px;">
 <pre><span class="color-source-sql-keyword">call</span> pghist.hist_expression_row_desc(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice'</span>, <span class="color-source-sql-string">''</span><span class="color-source-sql-string">'Invoice'</span><span class="color-source-sql-string">''</span>);   
-<span class="color-source-sql-keyword">call</span> pghist.hist_expression_row_desc(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, &dollar;&dollar; <span class="color-source-sql-string">'Row #'</span>||&dollar;1.id||<span class="color-source-sql-string">' / '</span>||(<span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">name</span> <span class="color-source-sql-keyword">from</span> example.product <span class="color-source-sql-keyword">where</span> id=&dollar;1.product_id) &dollar;&dollar;);
-<span class="color-source-sql-keyword">call</span> pghist.hist_expression_value_desc(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, <span class="color-source-sql-string">'color'</span>, &dollar;&dollar; <span class="color-source-sql-keyword">case</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'R'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Red'</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'B'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Blue'</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'G'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Green'</span> <span class="color-source-sql-keyword">else</span> &dollar;1 <span class="color-source-sql-keyword">end</span> &dollar;&dollar;);
+<span class="color-source-sql-keyword">call</span> pghist.hist_expression_row_desc(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, <span class="color-source-sql-block-border">&dollar;&dollar;</span> <span class="color-source-sql-string">'Row #'</span>||&dollar;1.id||<span class="color-source-sql-string">' / '</span>||(<span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">name</span> <span class="color-source-sql-keyword">from</span> example.product <span class="color-source-sql-keyword">where</span> id=&dollar;1.product_id) <span class="color-source-sql-block-border">&dollar;&dollar;</span>);
+<span class="color-source-sql-keyword">call</span> pghist.hist_expression_value_desc(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, <span class="color-source-sql-string">'color'</span>, <span class="color-source-sql-block-border">&dollar;&dollar;</span> <span class="color-source-sql-keyword">case</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'R'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Red'</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'B'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Blue'</span> <span class="color-source-sql-keyword">when</span> &dollar;1=<span class="color-source-sql-string">'G'</span> <span class="color-source-sql-keyword">then</span> <span class="color-source-sql-string">'Green'</span> <span class="color-source-sql-keyword">else</span> &dollar;1 <span class="color-source-sql-keyword">end</span> <span class="color-source-sql-block-border">&dollar;&dollar;</span>);
 
 <span class="color-source-sql-keyword">select</span> pghist.hist_expression_row_desc_current(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>);
 <span class="color-source-sql-keyword">select</span> pghist.hist_expression_value_desc_default(<span class="color-source-sql-string">'example'</span>, <span class="color-source-sql-string">'invoice_product'</span>, <span class="color-source-sql-string">'color'</span>);
@@ -1110,10 +1121,10 @@ Example:<br>
 <div class="div-source-code border-color-div-source-code" style="height: 175px;">
 <pre><span class="color-source-sql-keyword">select</span> pghist.hist_column_custom_function_current(<span class="color-source-sql-string">'db_user_name'</span>);
 
-<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> myapp.user_name(db_user <span class="color-source-sql-keyword">name</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">varchar</span> <span class="color-source-sql-keyword">language</span> plpgsql <span class="color-source-sql-keyword">as</span> &dollar;&dollar; 
+<span class="color-source-sql-keyword">create</span> <span class="color-source-sql-keyword">or</span> <span class="color-source-sql-keyword">replace</span> <span class="color-source-sql-keyword">function</span> myapp.user_name(db_user <span class="color-source-sql-keyword">name</span>) <span class="color-source-sql-keyword">returns</span> <span class="color-source-sql-keyword">varchar</span> <span class="color-source-sql-keyword">language</span> <span class="color-source-sql-keyword">plpgsql</span> <span class="color-source-sql-keyword">as</span> <span class="color-source-sql-block-border">&dollar;&dollar;</span> 
 <span class="color-source-sql-keyword">begin</span> 
-  return (<span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">name</span> <span class="color-source-sql-keyword">from</span> myapp.users <span class="color-source-sql-keyword">where</span> login=db_user);                                        
-<span class="color-source-sql-keyword">end</span>; &dollar;&dollar;;
+  <span class="color-source-sql-keyword">return</span> (<span class="color-source-sql-keyword">select</span> <span class="color-source-sql-keyword">name</span> <span class="color-source-sql-keyword">from</span> myapp.users <span class="color-source-sql-keyword">where</span> login=db_user);                                        
+<span class="color-source-sql-keyword">end</span>; <span class="color-source-sql-block-border">&dollar;&dollar;</span>;
 
 <span class="color-source-sql-keyword">call</span> pghist.hist_column_custom_function(<span class="color-source-sql-string">'db_user_name'</span>, <span class="color-source-sql-string">'myapp.user_name'</span>);
 </pre>

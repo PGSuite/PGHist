@@ -19,14 +19,14 @@ The installer is [pghist_init.sql](https://github.com/PGHist/PGHist/raw/main/pgh
 The installation consists in executing it in the psql terminal client or SQL manager, for example:  
 
 ```bash
-wget -O - -q https://github.com/PGHist/PGHist/raw/main/pghist_init.sql | psql -d [database]
+curl https://github.com/PGHist/PGHist/raw/main/pghist_init.sql | psql [database]
 ```
 
 Optional. If the developers are not superusers, need to grant them privileges on the pghist schema and its procedures.
 To do this, use the SQL script [pghist_grants.sql](https://github.com/PGHist/PGHist/raw/main/pghist_grants.sql) with the roles variable. For example:
 
 ```bash
-wget -O - -q https://github.com/PGHist/PGHist/raw/main/pghist_grants.sql | psql -d [database] -v roles=[developers]
+curl https://github.com/PGHist/PGHist/raw/main/pghist_grants.sql | psql [database] -v roles=[developers]
 ```
 
 ### Extension ###
@@ -34,9 +34,9 @@ wget -O - -q https://github.com/PGHist/PGHist/raw/main/pghist_grants.sql | psql 
 To install `PGHist` as an extension, unpack the [pghist_extension.tar](https://github.com/PGHist/PGHist/raw/main/extension/pghist_extension.tar) archive into the [sharedir]/extension directory of the postgres installation, for example (run as root):
 
 ```bash
-wget -O - -q https://github.com/PGHist/PGHist/raw/main/extension/pghist_extension.tar | tar x -C `su - postgres -c "pg_config --sharedir"`/extension
+curl https://github.com/PGHist/PGHist/raw/main/extension/pghist_extension.tar | tar x -C $(pg_config --sharedir)/extension
 ```
-More info on page [download](https://pghist.org/en/download/)
+More info on page [download](https://pghist.org/download/)
 
 ### Simple example ###
 
