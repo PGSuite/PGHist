@@ -2,7 +2,7 @@ create schema if not exists pghist;
 
 create or replace function pghist.pghist_version() returns varchar language plpgsql as $$
 begin
-  return '26.3';
+  return '26.4';
 end; $$;
 
 create table if not exists pghist.hist_transaction(

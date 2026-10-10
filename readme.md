@@ -15,11 +15,11 @@ There are also event triggers that rebuild the history table and recreate the st
 
 ### Installation ###
 
-The installer is [pghist_init.sql](https://github.com/PGHist/PGHist/raw/main/pghist_init.sql) file that creates `pghist` schema.  
+The installer is [pghist.sql](https://github.com/PGHist/PGHist/raw/main/pghist.sql) file that creates `pghist` schema.  
 The installation consists in executing it in the psql terminal client or SQL manager, for example:  
 
 ```bash
-curl https://github.com/PGHist/PGHist/raw/main/pghist_init.sql | psql [database]
+curl https://github.com/PGHist/PGHist/raw/main/pghist.sql | psql [database]
 ```
 
 Optional. If the developers are not superusers, need to grant them privileges on the pghist schema and its procedures.
